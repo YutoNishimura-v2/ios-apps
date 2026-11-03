@@ -11,15 +11,18 @@
 - iPhone と Windows PC をつなぐ USB ケーブル
 - iPhone にパスコードを設定しておく
 
-## 1. Windows に入れるもの（Claude が承認をもらって用意する）
+## 1. Windows 側（2026-11-04 に Claude が入れた。管理者の確認なしで入る版）
 
-| ソフト | 公式の配布元 | ファイル |
+| ソフト | 入れたもの | 状態 |
 | --- | --- | --- |
-| iTunes（Apple 版。Microsoft Store 版より Apple 版が推奨） | https://www.apple.com/itunes/download/win64 | iTunes64Setup.exe（約 193 MB） |
-| iloader v2.4.1 | https://github.com/nab138/iloader/releases | iloader-windows-x64.msi（約 8.5 MB） |
+| iloader 2.4.1 | 公式 github.com/nab138/iloader の `iloader-windows-x64.exe`（ユーザー単位、SHA-256 照合済み） | 入れた。スタートメニューの「iloader」 |
+| iTunes | Microsoft Store 版（Apple Inc.、iloader 公式サイトのリンク先と同じ） | 入れた。**初回の使用許諾に「同意する」だけ残っている** |
+
+Store 版 iTunes は、iPhone と USB で話す部品（AppleMobileDeviceProcess）を「iTunes を一度開いて使用許諾に同意したあと」に動かす。
 
 ## 2. SideStore を入れる（SideStore 公式手順の順番）
 
+0. PC で iTunes を開き（開いたままの画面があればそれ）、使用許諾に「同意する」。
 1. iPhone を USB でつなぎ、iPhone 側で「このコンピュータを信頼」→ パスコード。
 2. PC で iloader を開き、サイドロード用の Apple ID でサインインして「Install SideStore (Stable)」。
 3. iPhone：設定 → 一般 → VPN とデバイス管理 → 自分の Apple ID →「信頼」。

@@ -16,5 +16,8 @@
   - IPA の中身：arm64、`CFBundleDisplayName` = 見開き、`CFBundleIdentifier` = io.github.yutonishimura-v2.mihiraki、`CFBundleShortVersionString` = 1.0.2、`CFBundleVersion` = 2、MinimumOSVersion 16.0、横向きのみ、`UILaunchScreen` あり、アイコン入り、署名なし。
   - 配布元 JSON の `version` / `buildVersion` は IPA と一致（SideStore はバンドル ID とバージョンを照合する）。
 - SideStore の仕様（コードを読んで確認、0.6.4〜develop）：署名なし IPA は SideStore が署名し直す。`appPermissions` は省略可で、権限の照合は既定でオフ。無料アカウントではバンドル ID の末尾にチーム ID が付く（配布元には元の ID を書く）。
-- Windows 側：iTunes・iloader は未インストール（2026-11-04 時点）。入れるのは本人の承認待ち。
+- Windows 側（本人承認のうえで実施）：
+  - Apple 版 iTunes（iTunes64Setup.exe、Apple 署名 Valid）と iloader の msi（SHA-256 一致）を `C:\Users\yuton\Downloads\sidestore-setup` に落としたが、どちらも管理者の確認（UAC）が要り、本人が PC の前にいないため入れられなかった（UAC はキャンセル扱い）。
+  - 代わりに UAC の要らない版で入れた：iloader 2.4.1 は `iloader-windows-x64.exe /S`（Tauri 既定のユーザー単位、`%LOCALAPPDATA%\iloader`、SHA-256 0b9a129a… 一致）、iTunes は `winget install --id 9PB2MZ1ZMB1S --source msstore`（AppleInc.iTunes 12139.12003.62022.0）。
+  - Store 版 iTunes は Windows サービスを作らず、`AppleMobileDeviceProcess` をスタートアップタスク（初期は無効）で動かす。iTunes を一度開いたところ使用許諾の画面で止まっている。同意は本人が PC の前に来たときに行う（画面操作の許可は出なかった）。
 - 実機での見開き表示は未確認（本人が SideStore で入れたあとに確認）。
