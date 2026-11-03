@@ -76,7 +76,7 @@ jobs:
           BUNDLE_ID=$(python3 -c "import json; print(json.load(open('app.json'))['bundleIdentifier'])")
           test "$(plutil -extract CFBundleShortVersionString raw "$PLIST")" = "$VERSION"
           test "$(plutil -extract CFBundleIdentifier raw "$PLIST")" = "$BUNDLE_ID"
-          plutil -extract CFBundleIcons raw "$PLIST" > /dev/null
+          plutil -extract CFBundleIcons xml1 -o - "$PLIST" > /dev/null
           rm -rf Payload && mkdir Payload && cp -R "$APP_DIR" Payload/
           zip -qry "$APP.ipa" Payload
           unzip -l "$APP.ipa" | tail -n 3
