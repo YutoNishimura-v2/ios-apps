@@ -1,5 +1,11 @@
 # STATUS
 
+## 開発メモ
+
+- push は SSH で行う。gh のトークンに `workflow` スコープがないため、HTTPS では `.github/workflows/` を変えるコミットを push できない。PC の SSH 鍵は GitHub に登録済み。ただし `~/.ssh/known_hosts` に github.com がないので、`gh api meta --jq '.ssh_keys[]'` で取った公式のホスト鍵を一時ファイルに書き、`GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=<一時ファイル> -o StrictHostKeyChecking=yes"` を付けて push する。HTTPS で push したいなら、本人が一度 `gh auth refresh -h github.com -s workflow`（ブラウザで承認）を実行する。
+- `docs/` だけの変更ではビルドは走らない（ワークフローの paths に入れていない）。
+- `pages/index.html` の `sidestore://source?url=` リンクが SideStore で効くかは未確認。効かないときは配布元の URL を手で貼る（SETUP.md に記載）。
+
 ## 2026-11-04
 
 - リポジトリ作成。見開きリーダー（`apps/MihirakiReader`）のソース、XcodeGen 設定、アイコン、Actions ワークフロー、配布元 JSON の生成スクリプトを追加。
