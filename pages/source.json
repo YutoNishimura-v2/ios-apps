@@ -1,0 +1,8 @@
+{
+  "name": "YutoNishimura-v2 Apps",
+  "identifier": "io.github.yutonishimura-v2.apps",
+  "subtitle": "個人用の自作 iPhone アプリ",
+  "description": "GitHub Actions でビルドした個人用アプリの配布元です。",
+  "tintColor": "#2F4A86",
+  "website": "https://github.com/YutoNishimura-v2/ios-apps"
+}

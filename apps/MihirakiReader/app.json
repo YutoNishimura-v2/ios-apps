@@ -1,0 +1,11 @@
+{
+  "name": "見開きリーダー",
+  "bundleIdentifier": "io.github.yutonishimura-v2.mihiraki",
+  "version": "1.0",
+  "minOSVersion": "16.0",
+  "developerName": "YutoNishimura-v2",
+  "subtitle": "電子書籍サイトを全画面・見開きで読む個人用ビューア",
+  "localizedDescription": "WKWebView で cmoa.jp を開き、Mac 版 Safari として振る舞うことで PC 版（見開き）のビューアを全画面・横向きで表示します。表示の仕方を変えるだけで、コンテンツの取得や保存は行いません。3本指で長押しすると再読み込み・トップへ・戻る・進むのメニューが出ます。",
+  "tintColor": "#2F4A86",
+  "icon": "Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+}

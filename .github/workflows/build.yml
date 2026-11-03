@@ -1,0 +1,110 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "scripts/**"
+      - "pages/**"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.list.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: list
+        run: echo "apps=$(ls apps | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: list
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.list.outputs.apps) }}
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    env:
+      APP: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        run: |
+          set -euo pipefail
+          BASE=$(python3 -c "import json; print(json.load(open('app.json'))['version'])")
+          VERSION="$BASE.$GITHUB_RUN_NUMBER"
+          BUILD="$GITHUB_RUN_NUMBER"
+          xcodebuild build -quiet \
+            -project "$APP.xcodeproj" -scheme "$APP" \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_DIR="build/Build/Products/Release-iphoneos/$APP.app"
+          PLIST="$APP_DIR/Info.plist"
+          plutil -p "$PLIST"
+          BUNDLE_ID=$(python3 -c "import json; print(json.load(open('app.json'))['bundleIdentifier'])")
+          test "$(plutil -extract CFBundleShortVersionString raw "$PLIST")" = "$VERSION"
+          test "$(plutil -extract CFBundleIdentifier raw "$PLIST")" = "$BUNDLE_ID"
+          plutil -extract CFBundleIcons raw "$PLIST" > /dev/null
+          rm -rf Payload && mkdir Payload && cp -R "$APP_DIR" Payload/
+          zip -qry "$APP.ipa" Payload
+          unzip -l "$APP.ipa" | tail -n 3
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$APP-v$VERSION" "$APP.ipa" \
+            --target "$GITHUB_SHA" --title "$APP $VERSION" \
+            --notes "Unsigned IPA built from ${GITHUB_SHA::7}. Install it with SideStore."
+
+  publish:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build source JSON
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/build_source.py _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

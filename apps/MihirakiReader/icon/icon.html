@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: #1d2b4f; overflow: hidden; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<!-- 見開き本のオリジナルアイコン（1024x1024、透過なし）。headless Edge でスクリーンショットして PNG にする -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f4a86"/>
+      <stop offset="1" stop-color="#16213f"/>
+    </linearGradient>
+    <linearGradient id="pageL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="0.85" stop-color="#f6eedc"/>
+      <stop offset="1" stop-color="#d9ccb0"/>
+    </linearGradient>
+    <linearGradient id="pageR" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="0.85" stop-color="#f6eedc"/>
+      <stop offset="1" stop-color="#d9ccb0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- 表紙（ページの下に少し見える） -->
+  <path d="M120 300 Q300 262 512 318 Q724 262 904 300 L904 790 Q724 752 512 808 Q300 752 120 790 Z" fill="#c8463d"/>
+
+  <!-- 左ページ -->
+  <path d="M146 282 Q318 236 506 296 L506 776 Q318 718 146 764 Z" fill="url(#pageL)"/>
+  <!-- 右ページ -->
+  <path d="M878 282 Q706 236 518 296 L518 776 Q706 718 878 764 Z" fill="url(#pageR)"/>
+
+  <!-- コマ割り（左） -->
+  <g fill="none" stroke="#3a4766" stroke-width="10" stroke-linejoin="round" opacity="0.85">
+    <path d="M196 312 Q300 290 462 324 L462 498 Q300 466 196 486 Z"/>
+    <path d="M196 528 Q262 516 318 520 L318 714 Q262 708 196 722 Z"/>
+    <path d="M350 524 Q410 528 462 542 L462 728 Q410 712 350 716 Z"/>
+  </g>
+  <!-- コマ割り（右） -->
+  <g fill="none" stroke="#3a4766" stroke-width="10" stroke-linejoin="round" opacity="0.85">
+    <path d="M562 324 Q662 296 828 312 L828 486 Q662 466 562 498 Z"/>
+    <path d="M562 542 Q614 528 674 524 L674 716 Q614 712 562 728 Z"/>
+    <path d="M706 520 Q762 516 828 528 L828 722 Q762 708 706 714 Z"/>
+  </g>
+
+  <!-- のど -->
+  <rect x="504" y="292" width="16" height="490" rx="8" fill="#b9a988"/>
+
+  <!-- しおり -->
+  <path d="M760 250 L808 250 L808 380 L784 356 L760 380 Z" fill="#f2b632"/>
+</svg>
+</body>
+</html>
