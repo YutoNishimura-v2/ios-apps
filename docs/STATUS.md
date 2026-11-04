@@ -41,3 +41,5 @@
   - `build.yml` の list は `project.yml` があるフォルダだけを返すようにした。`apps/LightPuzzle` は `app.json` とアイコンだけ。
   - 非公開側の最初のビルド（run 41835443700）は成功。IPA 621,081 バイト、ステージ JSON 3つ入り。トークン `IOS_APPS_TOKEN` が未登録なので、IPA は Actions の成果物にあるだけで、まだ配布元には出ていない。
 - 本人が `IOS_APPS_TOKEN` を登録。非公開側の run 41836389999 で `LightPuzzle-v0.1.3` が ios-apps に載り、repository_dispatch で publish.yml（run 41836486889、main）が走って配布元に「光の反射（試作）」0.1.3（171,343 バイト）が出た。IPA はログインなしで落とせることを確認。
+- 実機で「光の反射（試作）」0.1.3 の導入が `SideSign.DeveloperPortalError 10`（Bundle identifier unavailable: invalid value '光の反射' for 'appIdName'）で失敗。SideStore 0.7.0-alpha は表示名（CFBundleDisplayName）をそのまま App ID の名前に使い、Apple は ASCII 以外を断る（develop には英字に直す `sanitizeAppIDName` が入っているが、0.7.0-alpha にはない）。
+  - 対処：表示名を ASCII（Light Puzzle、Mihiraki）にし、日本語の名前は `ja.lproj/InfoPlist.strings` の訳で出す。両方のビルドに「表示名が ASCII か」の確認を足した。LightPuzzle 0.1.4・見開きリーダー 1.0.6 で反映（IPA に ja.lproj が入っているのを確認）。実機での導入は未確認。
