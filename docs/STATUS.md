@@ -40,3 +40,4 @@
   - Release のイベントではなく repository_dispatch にしたのは、Pages の環境 github-pages が main からしか公開できないため（Release のイベントはタグで走る）。
   - `build.yml` の list は `project.yml` があるフォルダだけを返すようにした。`apps/LightPuzzle` は `app.json` とアイコンだけ。
   - 非公開側の最初のビルド（run 41835443700）は成功。IPA 621,081 バイト、ステージ JSON 3つ入り。トークン `IOS_APPS_TOKEN` が未登録なので、IPA は Actions の成果物にあるだけで、まだ配布元には出ていない。
+- 本人が `IOS_APPS_TOKEN` を登録。非公開側の run 41836389999 で `LightPuzzle-v0.1.3` が ios-apps に載り、repository_dispatch で publish.yml（run 41836486889、main）が走って配布元に「光の反射（試作）」0.1.3（171,343 バイト）が出た。IPA はログインなしで落とせることを確認。
