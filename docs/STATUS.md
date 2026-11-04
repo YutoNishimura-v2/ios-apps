@@ -43,3 +43,7 @@
 - 本人が `IOS_APPS_TOKEN` を登録。非公開側の run 41836389999 で `LightPuzzle-v0.1.3` が ios-apps に載り、repository_dispatch で publish.yml（run 41836486889、main）が走って配布元に「光の反射（試作）」0.1.3（171,343 バイト）が出た。IPA はログインなしで落とせることを確認。
 - 実機で「光の反射（試作）」0.1.3 の導入が `SideSign.DeveloperPortalError 10`（Bundle identifier unavailable: invalid value '光の反射' for 'appIdName'）で失敗。SideStore 0.7.0-alpha は表示名（CFBundleDisplayName）をそのまま App ID の名前に使い、Apple は ASCII 以外を断る（develop には英字に直す `sanitizeAppIDName` が入っているが、0.7.0-alpha にはない）。
   - 対処：表示名を ASCII（Light Puzzle、Mihiraki）にし、日本語の名前は `ja.lproj/InfoPlist.strings` の訳で出す。両方のビルドに「表示名が ASCII か」の確認を足した。LightPuzzle 0.1.4・見開きリーダー 1.0.6 で反映（IPA に ja.lproj が入っているのを確認）。実機での導入は未確認。
+- 本人の判断（2026-11-05）：光の反射パズルは「角度をスライダー代わりにしているだけで折る必然がない」。代わりに Duo 専用カメラの方向へ。最初の実験として **CatchLight**（外側の画面を、背面カメラで撮る被写体への照明にする。瞳に光の形を映す）を作った。
+  - ソースは非公開の duo-light-puzzle の `CatchLight/`。外側の画面は `CameraCaptureAccessory`（iOS 27.1）。光の形 7 種、色温度・色・明るさ、外側を触るとシャッター、外側の画面の明るさを最大に。
+  - 非公開側のビルドを呼び出し式の `ios-build.yml` にまとめ、`build.yml`（光の反射、版の番号を続けるため名前はそのまま）と `catchlight.yml` から呼ぶ。
+  - run 41841063885 で一度で成功。配布元に「キャッチライト（試作）」0.1.1（205,005 バイト）が出た。実機では未確認（外側に出るか、明るさが照明として足りるか、瞳に映るか）。
