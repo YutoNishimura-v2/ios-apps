@@ -1,0 +1,12 @@
+{
+  "name": "光の反射（試作）",
+  "bundleIdentifier": "io.github.yutonishimura-v2.lightpuzzle",
+  "version": "0.1",
+  "minOSVersion": "27.1",
+  "developerName": "YutoNishimura-v2",
+  "subtitle": "iPhone Duo の開き角度で鏡を傾ける光のパズル（試作）",
+  "localizedDescription": "折り目にある鏡の傾きが Duo の開き角度と連動します。光をすべての的に当てて 0.5 秒保つとクリア。閉じる操作や速さは要りません。ソースは非公開のリポジトリにあり、ここには IPA だけを置きます。",
+  "tintColor": "#E0A53A",
+  "icon": "icon.png",
+  "external": true
+}

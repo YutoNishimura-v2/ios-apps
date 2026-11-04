@@ -12,10 +12,11 @@
 | --- | --- | --- |
 | `apps/MihirakiReader` | 見開き | cmoa.jp を Mac 版 Safari として開き、PC 版（見開き）のビューアを全画面・横向きで表示する。表示の仕方を変えるだけで、コンテンツの取得・保存はしない。 |
 | `apps/hinge-lab` | HingeLab | iPhone Duo の開き角度（onHingeChange、iOS 27.1 SDK）を表示・計測する。更新回数、直近1秒のブレ、最小・最大、5度ごとの振動、0.5秒止めて確定の判定。ヒンジのない端末はスライダーで代用。 |
+| `apps/LightPuzzle` | 光の反射（試作） | Duo の開き角度で鏡を傾ける光のパズル。ソースは非公開の別リポジトリで、ここには配布元に載せる情報（`app.json`、アイコン）だけを置く。IPA は別リポジトリのビルドがこのリポジトリの Release に載せ、`publish.yml` を repository_dispatch で呼んで配布元を作り直す。 |
 
 ## アプリを足すとき
 
-1. `apps/<ターゲット名>/` に `project.yml`（XcodeGen）、`app.json`（配布元に載せる情報）、ソース、アイコンを置く。
+1. `apps/<ターゲット名>/` に `project.yml`（ここでビルドするときだけ）（XcodeGen）、`app.json`（配布元に載せる情報）、ソース、アイコンを置く。
 2. main に push すると Actions がビルドし、`<ターゲット名>-v<バージョン>` のリリースを作り、配布元の JSON を更新する。
 3. バージョンは `app.json` の `version` に Actions の実行番号を付けたもの（例 `1.0.12`）。push のたびに SideStore で更新が出る。
 

@@ -27,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - id: list
-        run: echo "apps=$(ls apps | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+        # project.yml があるものだけここでビルドする（ないものは別リポジトリで作った IPA を載せるだけ）
+        run: echo "apps=$(for d in apps/*/; do [ -f "$d/project.yml" ] && basename "$d"; done | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
 
   build:
     needs: list

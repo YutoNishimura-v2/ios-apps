@@ -1,0 +1,36 @@
+name: publish
+
+# 別リポジトリ（非公開）のビルドがこのリポジトリに Release を作ったあと、配布元の JSON と配布ページを作り直す。
+# Release のイベントはタグで走り、Pages の環境は main からしか公開できないので、repository_dispatch で呼ぶ（main で走る）。
+on:
+  repository_dispatch:
+    types: [ipa-published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build source JSON
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/build_source.py _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
