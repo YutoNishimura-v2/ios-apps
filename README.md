@@ -2,7 +2,7 @@
 
 個人用の自作 iPhone アプリ。Apple Developer Program（有料）を使わずに配る。
 
-- ビルド：GitHub Actions の macOS ランナーで署名なしの IPA を作り、GitHub Releases に置く。
+- ビルド：GitHub Actions の `xcode-27` ランナー（Xcode 27.1 に固定）で署名なしの IPA を作り、GitHub Releases に置く。
 - 導入：iPhone の SideStore が無料 Apple ID で署名してインストールする（7日ごとに更新）。
 - 配布元（SideStore のソース）：https://yutonishimura-v2.github.io/ios-apps/apps.json
 
@@ -11,6 +11,7 @@
 | フォルダ | 表示名 | 内容 |
 | --- | --- | --- |
 | `apps/MihirakiReader` | 見開き | cmoa.jp を Mac 版 Safari として開き、PC 版（見開き）のビューアを全画面・横向きで表示する。表示の仕方を変えるだけで、コンテンツの取得・保存はしない。 |
+| `apps/hinge-lab` | HingeLab | iPhone Duo の開き角度（onHingeChange、iOS 27.1 SDK）を表示・計測する。更新回数、直近1秒のブレ、最小・最大、5度ごとの振動、0.5秒止めて確定の判定。ヒンジのない端末はスライダーで代用。 |
 
 ## アプリを足すとき
 

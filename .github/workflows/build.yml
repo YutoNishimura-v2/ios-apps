@@ -31,7 +31,8 @@ jobs:
 
   build:
     needs: list
-    runs-on: macos-latest
+    # Xcode 27 の公式イメージ（標準サイズ）。iOS 27.1 SDK（開き角度の API）はここにある
+    runs-on: xcode-27
     strategy:
       fail-fast: false
       matrix:
@@ -46,8 +47,16 @@ jobs:
 
       - name: Toolchain
         run: |
+          set -euo pipefail
+          # 既定の Xcode がイメージ更新で変わってもビルドが変わらないよう固定する
+          sudo xcode-select -s /Applications/Xcode_27.1.app
           sw_vers
           xcodebuild -version
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK: $SDK"
+          # app.json の minSDK（任意）より古い SDK なら、原因がわかる形で止める
+          NEED=$(python3 -c "import json; print(json.load(open('app.json')).get('minSDK', '0'))")
+          python3 -c "import sys; v=lambda s: tuple(map(int, s.split('.'))); sys.exit(v('$SDK') < v('$NEED'))"             || { echo "::error::$APP needs iOS SDK $NEED, but this runner has $SDK"; exit 1; }
           brew install xcodegen
 
       - name: Generate Xcode project

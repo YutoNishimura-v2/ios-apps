@@ -1,0 +1,12 @@
+{
+  "name": "HingeLab",
+  "bundleIdentifier": "io.github.yutonishimura-v2.hingelab",
+  "version": "1.0",
+  "minOSVersion": "27.1",
+  "developerName": "YutoNishimura-v2",
+  "subtitle": "iPhone Duo の開き角度を測る計測アプリ",
+  "localizedDescription": "iPhone Duo の開き角度（onHingeChange）を小数点1桁で表示し、1秒あたりの更新回数、直近1秒のブレ（標準偏差）、最小・最大角を記録します。5度ごとの軽い振動と、同じ角度で0.5秒止めると確定する判定も試せます。ヒンジのない端末ではスライダーで代用します。",
+  "tintColor": "#E0A53A",
+  "icon": "Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "minSDK": "27.1"
+}
