@@ -32,7 +32,9 @@ targets:
     info:
       path: Info.plist
       properties:
-        CFBundleDisplayName: 見開き
+        # SideStore（0.7.0-alpha）は表示名を App ID の名前に使い、Apple は ASCII 以外を断る。日本語名は ja.lproj の訳で出す
+        CFBundleDisplayName: Mihiraki
+        CFBundleLocalizations: [en, ja]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}

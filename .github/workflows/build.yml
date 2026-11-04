@@ -87,6 +87,9 @@ jobs:
           test "$(plutil -extract CFBundleShortVersionString raw "$PLIST")" = "$VERSION"
           test "$(plutil -extract CFBundleIdentifier raw "$PLIST")" = "$BUNDLE_ID"
           plutil -extract CFBundleIcons xml1 -o - "$PLIST" > /dev/null
+          # SideStore が App ID の名前に使うので、表示名（なければ CFBundleName）は ASCII にする
+          NAME=$(plutil -extract CFBundleDisplayName raw "$PLIST" 2>/dev/null || plutil -extract CFBundleName raw "$PLIST")
+          LC_ALL=C grep -q '^[ -~]*$' <<< "$NAME" || { echo "::error::CFBundleDisplayName '$NAME' must be ASCII (SideStore uses it as the App ID name)"; exit 1; }
           rm -rf Payload && mkdir Payload && cp -R "$APP_DIR" Payload/
           zip -qry "$APP.ipa" Payload
           unzip -l "$APP.ipa" | tail -n 3
