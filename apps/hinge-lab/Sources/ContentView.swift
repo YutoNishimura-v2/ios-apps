@@ -20,6 +20,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(red: 0.07, green: 0.08, blue: 0.12))
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { monitor.screenChanged(to: $0) }
     }
 
     private var header: some View {
@@ -56,6 +57,8 @@ struct ContentView: View {
                 Text("まだ更新が来ていません。ゆっくり少しだけ動かしてみてください。")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+            Text("計測の数値はヒンジの値だけで取ります（スライダーは振動・確定の試し用）")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -70,10 +73,12 @@ struct ContentView: View {
         Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
             row("更新（直近1秒）", "\(monitor.rate) 回", "最大 \(monitor.peakRate) 回/秒")
             row("ブレ（直近1秒の標準偏差）", format(monitor.jitter, "%.2f°"), monitor.jitter == nil ? "更新2回未満" : "")
+            row("直近1秒の幅（最大−最小）", format(monitor.spread, "%.2f°"), "")
             row("最小・最大", "\(format(monitor.minAngle, "%.1f°")) 〜 \(format(monitor.maxAngle, "%.1f°"))", "")
-            row("最小の刻み", format(monitor.smallestStep, "%.2f°"), "")
+            row("最小の刻み", format(monitor.smallestStep, "%.3f°"), "")
             row("最長の更新間隔", format(monitor.longestGap.map { $0 * 1000 }, "%.0f ms"), "1秒未満の間だけ")
             row("ヒンジからの更新総数", "\(monitor.totalUpdates)", "")
+            row("画面の切り替わり", monitor.screenSwitches.first ?? "—", "")
         }
         .font(.callout)
         .padding(16)
