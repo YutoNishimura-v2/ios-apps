@@ -1,0 +1,12 @@
+{
+  "name": "キャッチライト（試作）",
+  "bundleIdentifier": "io.github.yutonishimura-v2.catchlight",
+  "version": "0.1",
+  "minOSVersion": "27.1",
+  "developerName": "YutoNishimura-v2",
+  "subtitle": "Duo の外側の画面を、背面カメラで撮る人への照明にする（試作）",
+  "localizedDescription": "Duo を開くと外側の画面は背面カメラと同じ向きを向きます。そこに光の形（全面・リング・窓・帯・星・ハート）を出し、色温度・色・明るさを変えて、被写体を照らし、瞳に光を映します。被写体が外側の画面に触るとシャッターが切れます。ソースは非公開のリポジトリにあり、ここには IPA だけを置きます。",
+  "tintColor": "#F3E9D2",
+  "icon": "icon.png",
+  "external": true
+}
