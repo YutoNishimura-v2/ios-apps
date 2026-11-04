@@ -29,3 +29,4 @@
   - 角度は SwiftUI の `onHingeChange`（`DeviceHingeContext.hinge?.angle.degrees`、状態は closed / partiallyOpen / fullyOpen）。API の形は FoldSafe（MIT）の BUILD_NOTES にある SDK の宣言で確認。コードは流用せず自前で書いた（HingeKit も MIT、未使用）。
   - 見開きリーダーも同じ push で 1.0.3 に上がった（全アプリを毎回ビルドする仕組みのため）。
   - Duo 実機での動作は未確認（SideStore のサインイン -80045 が解決してから）。
+- 本人：時間を置いても SideStore のサインインは -80045 のまま。SideStore・AltStore・iloader・Sideloadly で 10 月中旬から同じ報告が多く、[SideStore #1709](https://github.com/SideStore/SideStore/issues/1709) は未解決（Apple 側の認証の変更が原因とみられる）。11/3 に「これで通った」報告が複数ある回避策（[#1709 のコメント](https://github.com/SideStore/SideStore/issues/1709#issuecomment-6573352382)）：設定 → User Customizations で On-Device Anisette をオフ → Anisette Servers で SideStore (New) を選び Enable Auto Rotation をオフ → Anisette Client Configuration → Remote Server Sync で Fetch → Save as Overrides → Reset adi.pb → サインイン。本人が試す。
