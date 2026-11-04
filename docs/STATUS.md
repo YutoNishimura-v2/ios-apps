@@ -21,3 +21,5 @@
   - 代わりに UAC の要らない版で入れた：iloader 2.4.1 は `iloader-windows-x64.exe /S`（Tauri 既定のユーザー単位、`%LOCALAPPDATA%\iloader`、SHA-256 0b9a129a… 一致）、iTunes は `winget install --id 9PB2MZ1ZMB1S --source msstore`（AppleInc.iTunes 12139.12003.62022.0）。
   - Store 版 iTunes は Windows サービスを作らず、`AppleMobileDeviceProcess` をスタートアップタスク（初期は無効）で動かす。iTunes を一度開いたところ使用許諾の画面で止まっている。同意は本人が PC の前に来たときに行う（画面操作の許可は出なかった）。
 - 実機での見開き表示は未確認（本人が SideStore で入れたあとに確認）。
+- 本人が iTunes の使用許諾に同意。`AppleMobileDeviceProcess` が動いているのを確認し、iloader を起動した。Windows 側の準備は完了。
+- 本人：見開きリーダーはたぶん使わない。このリポジトリは今後の自作アプリの配布基盤として使う。次は iPhone に SideStore を入れる（SETUP.md 手順2）。

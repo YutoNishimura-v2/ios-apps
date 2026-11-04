@@ -16,7 +16,7 @@
 | ソフト | 入れたもの | 状態 |
 | --- | --- | --- |
 | iloader 2.4.1 | 公式 github.com/nab138/iloader の `iloader-windows-x64.exe`（ユーザー単位、SHA-256 照合済み） | 入れた。スタートメニューの「iloader」 |
-| iTunes | Microsoft Store 版（Apple Inc.、iloader 公式サイトのリンク先と同じ） | 入れた。**初回の使用許諾に「同意する」だけ残っている** |
+| iTunes | Microsoft Store 版（Apple Inc.、iloader 公式サイトのリンク先と同じ） | 入れた。使用許諾にも同意済み（AppleMobileDeviceProcess が動いているのを確認） |
 
 Store 版 iTunes は、iPhone と USB で話す部品（AppleMobileDeviceProcess）を「iTunes を一度開いて使用許諾に同意したあと」に動かす。
 
@@ -31,12 +31,11 @@ Store 版 iTunes は、iPhone と USB で話す部品（AppleMobileDeviceProcess
    - iPhone の中だけで閉じた VPN。SideStore が PC なしでアプリを入れる・更新するのに使う。インストール・更新のたびにオンにしておく。
 6. SideStore を開き、同じ Apple ID でサインイン。
 
-## 3. 見開きリーダーを入れる
+## 3. 配布元を登録する（一度だけ。以後の自作アプリはここに出てくる）
 
 1. iPhone の Safari で https://yutonishimura-v2.github.io/ios-apps/ を開き、「SideStore に追加」を押す。
    - 効かないときは SideStore の Sources → ＋ に上の配布元 URL を貼る。
-2. SideStore で「見開きリーダー」をインストールする（LocalDevVPN はオン）。
-3. ホーム画面の「見開き」から起動し、シーモアにログインする（ログインは保持される）。
+2. 使いたいアプリだけ SideStore でインストールする（LocalDevVPN はオン）。見開きリーダーは入れなくてよい。無料 Apple ID は SideStore を含めて3つまでなので、入れない分は枠を使わない。
 
 ## 4. 7日ごとの更新
 
