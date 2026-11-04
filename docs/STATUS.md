@@ -23,3 +23,9 @@
 - 実機での見開き表示は未確認（本人が SideStore で入れたあとに確認）。
 - 本人が iTunes の使用許諾に同意。`AppleMobileDeviceProcess` が動いているのを確認し、iloader を起動した。Windows 側の準備は完了。
 - 本人：見開きリーダーはたぶん使わない。このリポジトリは今後の自作アプリの配布基盤として使う。次は iPhone に SideStore を入れる（SETUP.md 手順2）。
+- HingeLab（`apps/hinge-lab`、Duo の開き角度の計測アプリ）を追加。run 41829557499（commit 8f70fb8）で一度で成功。リリース `hinge-lab-v1.0.3`、IPA 95,626 バイト、配布元に掲載（`io.github.yutonishimura-v2.hingelab` 1.0.3、minOSVersion 27.1）。
+  - ランナーを `macos-latest` から `xcode-27`（標準サイズ、Apple Silicon）に変え、`/Applications/Xcode_27.1.app` に固定。ログ：macOS 27.0.1、Xcode 27.1（27A9275）、iOS SDK 27.1。イメージ 20261026.0314 には Xcode 27.0 / 27.1（既定）/ 27.2 RC が入っている。
+  - `app.json` に `minSDK` を書くと、SDK が足りないときにビルド前に理由つきで止まる（hinge-lab は 27.1）。
+  - 角度は SwiftUI の `onHingeChange`（`DeviceHingeContext.hinge?.angle.degrees`、状態は closed / partiallyOpen / fullyOpen）。API の形は FoldSafe（MIT）の BUILD_NOTES にある SDK の宣言で確認。コードは流用せず自前で書いた（HingeKit も MIT、未使用）。
+  - 見開きリーダーも同じ push で 1.0.3 に上がった（全アプリを毎回ビルドする仕組みのため）。
+  - Duo 実機での動作は未確認（SideStore のサインイン -80045 が解決してから）。
