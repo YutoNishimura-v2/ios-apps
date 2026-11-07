@@ -1,8 +1,80 @@
 # 2 本目のアプリ（『すくう』）引き継ぎメモ
 
-最終更新：2026-11-08（Claude Code、ios-apps）— 第9回（批評 r8 の 66 点への対応）済み、commit be7ff45。批評役「金魚すくい批評」の自動ループ中（合格まで本人に出さない）
+最終更新：2026-11-08（Claude Code、ios-apps）— 第11回の途中（批評 r10 への対応、未 commit あり。いちばん上の節を読む）。以前：第10回（批評 r9 の 71 点への対応＋見た目）済み、commit 76ff4a4。批評役「金魚すくい批評」の自動ループ中（5/40 往復済み、合格まで本人に出さない）
 
-## ★★★★★ 第10回（見た目＋批評 r9 への対応）（2026-11-08、いちばん新しい）
+## ★★★★★★★★ 引き継ぎ（第11回の途中。いちばん新しい。下の節より優先）
+
+### ① 課題
+- 本人：「プロダクトレベルにしてから出せ」（iPhone で 5 分飽きない／強化が遊び方を変える／池→海→大陸→星→宇宙で「すくう＝救う」）。批評役「金魚すくい批評」との自動ループ（合格 85 点、5 時間枠が戻って再開した分は 0/40 から数え直し）。今は批評 r10（71 点）の 3 つを直している：
+  1. 初心者が池で止まる（基準：`hand.py 180 12` で すくえない最長 ≤20 秒、買い物の間隔 ≤30 秒、後半 3 区間の稼ぎが前の 1.2 倍以上、180 秒までに池の主か海）
+  2. 宇宙の山場（宇宙の段 60〜90 秒・中に新しい出来事 ≥3、キンちゃんが画面幅 30% 以上）と大陸の絵（前提なしのエージェントの採点で 5 段とも ≥7）
+  3. 一度に大量に失う破れ（10 匹以上の破れ ≤3 回/周、限界が近いとき破れる前に見える合図）
+
+### ② 今の状態
+- ブランチ main（push なし）。最新 commit 60a84ea。**未 commit：`proto/sukuu-html5/game.js`（buyAssist：一晩目の池で最後の買い物から 15 秒たつと 1 秒 4% 値下げ、最低 3 割。`G.lastBuyT`）、`docs/second-app/STATUS.md`、`tmp/r11/run_check.sh`（新規）**。commit しようとしたら権限確認が途切れた（Stream closed）。まず `node --check` → commit（`git commit -a` は使わない。`docs/STATUS.md`・`rec/manual.json`・`rec/upg_r7.json` は含めない）
+- 第11回で入れたもの（VERSION 11、index.html `game.js?v=11`、NOTES.md「第11回」に記載済み）：slump 守り、疲れた池の主（`tiredOf`/`wOf`、95 秒から 40 秒で 17→3.4）、catchUp 上限なし（+4%/秒）、一晩目の池の買い物 1 回目 9・2 回目は Lv0 なら 20（`FIRST_FIXED`、`G.pondBuys` をセーブ）、群れのあふれ（`SPILL_MAX` 1.8、「あふれた！ -N」）、限界 75% からのきしみ（`poi.strain`：震え・黄→赤の輪・ひび）、空振りの言葉を 8 秒おきに、宇宙の `COSMOS`（超新星 12 秒／キンちゃん 34 秒で登場＋「キンちゃんが 来た！」／ブラックホールが 48 秒から 10 秒暴れる）、キンちゃんの輪 r×0.74（直径 222px＝31%）、島 4 種と惑星・太陽・銀河・星雲の gpt-image 絵（`assets/isl_*.png`・`sp_*.png`、プロンプト `assets/prompts/`、一覧 `tmp/r11/art_sheet.png`）、`WORLD_PRICE=[3.3, 2.7, 1.8, 3.0, 6.5]`
+- 確かめた数字（buyAssist の前）：
+  - 人の速さ seed 1〜3（`tmp/r11/d_h*.txt`）：各段 ≤67.4 秒、宇宙 60.0〜65.6 秒（超新星・大群・キンちゃん登場・ブラックホールが中に）、10 匹以上の破れ 0〜2、エラー 0、overlay_max 1、最後の段 225〜245 秒。速い bot `d_f1`：10 匹以上の破れ 1（焦げ）
+  - 初心者 `tmp/critic/r11hand6`：すくえない最長 16.1 秒 ○、稼ぎの伸び 1.34/1.64/1.49 ○、池の主 131 秒・海 133 秒 ○、**買い物の間隔 49.9 秒 ×**（23→73 秒）→ buyAssist を足した（未確認）
+- 秘書の再起動で長い処理が何度も切れる。長い確認は Start-Process で切り離す（下の③）
+- 消してよい（自分では消していない）：`tmp/critic/r10hand_c`、`tmp/critic/r11hand1`〜`r11hand5`、`tmp/r11/a_*`・`b_*`・`c_*`、`proto/sukuu-html5/rec/r11_a_*`〜`r11_c_*.json`
+
+### ③ 次の一手
+1. 未 commit 分を commit
+2. 切り離して確認：PowerShell で `Start-Process -FilePath bash -ArgumentList 'tmp/r11/run_check.sh','e' -WorkingDirectory C:\Users\yuton\workspace\ios-apps -WindowStyle Hidden` → `tmp/r11/e_report.txt` の最後に DONE が出たら読む（人の速さ 1〜3・速い bot・初心者 hand をまとめて出す）。池が 50 秒未満に縮んだら buyAssist の 15 秒を延ばす
+3. 見た目：`sukuu_check.py shots --human --seed 1 --at 40,100,165,225,290 --dir tmp/r11/stages`（dir は rec/ からの相対）で 5 段＋キンちゃん登場を撮り、`tmp/r9/sheet.py` で一覧 → 前提なしの haiku サブエージェントに採点させる（全段 ≥7 を目指す）。きしみの合図のスクショも 1 枚
+4. NOTES.md「第11回」に確かめた数字、このメモ、Notion 台帳（行「2 本目のアプリ（企画）」page 4110e8c7da4d81f884aeeb19ccac4310）を更新して報告（やったこと／結果／本人に必要な判断：iPhone の `/api/proto/sukuu/` が assets を返すよう秘書側に頼むか、`tmp/critic/r10hand_c` は消してよい）
+
+### ④ 完了の条件
+- 初心者 `hand_check.py`：4 項目とも ok=True（実時間でぶれるので 2 回）
+- 人の速さ seed 1〜3：1 周目の各段 ≤70 秒（宇宙は 60〜90 秒）、宇宙の中に新しい出来事 ≥3、10 匹以上の破れ ≤3、エラー 0、overlay_max ≤1
+- 5 段の一覧を前提なしのエージェントが全段 ≥7 と採点、キンちゃんが画面幅 30% 以上に写ったスクショがある
+- 批評役が 85 点以上で合格
+
+## ★★★★★★★ 第11回（批評 r10＝71 点への対応）途中メモ（上の節が新しい。詳細は proto/sukuu-html5/NOTES.md「第11回」）
+- 済み（main、push なし。commit 219f1ec→…→最新）：VERSION 11。slump 守り・疲れた池の主（`tiredOf`/`wOf`）・catchUp 上限なし・2 回目の買い物（Lv0 なら 20）・群れのあふれ（`SPILL_MAX` 1.8）・限界 75% からのきしみ（`poi.strain`）・宇宙の山場（`COSMOS`：超新星 12 秒／キンちゃん 34 秒／暴れるブラックホール 48 秒）・キンちゃんの輪 r×0.74・島と宇宙の獲物の絵（`assets/isl_*`・`sp_*`）。`WORLD_PRICE=[3.3, 2.7, 1.8, 3.0, 6.5]`
+- 数字（`tmp/r11/d_h*.txt`・`python tmp/r11/loss.py proto/sukuu-html5/rec/r11_d_*.json`）：人の速さ seed 1〜3 の各段 ≤67.4 秒、宇宙 60.0〜65.6 秒（中に超新星・大群・キンちゃん登場・ブラックホール）、10 匹以上の破れ 0〜2、エラー 0、overlay_max 1。最後の段 225〜245 秒（seed 3 は 240 未満）
+- 初心者（`tmp/critic/r11hand4`、2 回目の値下げ前）：すくえない最長 16.1 秒・池の主 123 秒・海 125 秒。買い物の間隔 34 秒だけ未達 → 2 回目の値下げを入れて r11hand6 を取り直し中（再起動で止まらないよう Start-Process で切り離して実行。`python tmp/r11/hand_check.py tmp/critic/r11hand6`）
+- 残り：hand の確認、5 段のスクショ一覧と前提なしの採点（全段 ≥7）、きしみの合図のスクショ、STATUS・台帳更新、報告
+
+## ★★★★★★ 引き継ぎ（第10回後。下の節より優先。詳細と数字は proto/sukuu-html5/NOTES.md「第10回」）
+
+### ① 課題
+- 本人：「プロダクトレベルにしてから出せ」。iPhone で 5 分遊んで飽きない／どの強化も遊び方を変える／池→海→大陸→星→宇宙で「すくう＝救う」が見えていく。
+- 批評役との自動ループ（最大 40 往復、5/40 まで済み）。批評が届くたびに直し、日本語で「やったこと／結果／本人に必要な判断」を報告。合格（85 点）まで本人に出さない。
+- 秘書の追加指示（2026-11-08）：①段階ごとに、数字の大きさに合わせて画面がどう変わるかを各段 1 枚のスクショで残す ②UI は frontend-design スキル（`C:\Users\yuton\workspace\ai-secretary\tmp\ui-model-eval\frontend-design-SKILL.md`）と「作る→撮る→比べる→直す」で、gpt-image の絵（`ai-secretary/tmp/ui-model-eval/topics/compare-sukuu.png` の 8 番：夜祭りの提灯・深い青の水面・金の立体ボタン）を目指す。急ぎではない。
+
+### ② 今の状態
+- 済み：第10回（main、push なし。commit 0e3336e→2b4909f→ef9aa03→af7cdb9→…→76ff4a4）。VERSION 10、index.html は `game.js?v=10`。
+  - 見た目：`drawShopPlate`・`PLATE`（金の立体ボタン）、`frame()` に縁のつや、`artWater()` と `assets/sea_water.jpg`・`land_water.jpg`・`sky_space.jpg`・`cosmos.jpg`（プロンプトは `assets/prompts/`、道具 `tools/proto/imggen_asset.mjs`）。各段 1 枚：直す前 `tmp/r10_stages_before_sheet.png`、後 `tmp/r10_stages_d_sheet.png`（数字は同じ＝遊びは不変）。ボタン 3 状態 `tmp/r10/btn_c/stack.png`（`tmp/r10/btn_states.py`）。
+  - 初心者：`ease()`（一晩目の池 60〜170 秒で 1→0：濡れ方・重すぎの許し 1+1.5×ease 倍・1 匹で持てない魚はこぼれるだけ・軽い金魚を寄せる）、`catchUp`（一晩目の池 50〜130 秒で値段 1→3 倍）、最初の 12 すくいは 2 倍、重さで破れたら「ビリッ！ 重すぎ」＋厚さボタンが 4 秒光る（`G.thickHint`）。
+  - お守り：`PERKS`（厚紙・大枠・風・鈴・福袋）、宇宙の後に 3 枚から選ぶ（`drawPerkCards`、`rec/tmp/r10/perk/t0192.6.png`）、セーブに残る。`ngPrice()`＝×(1+0.7×ng)、宇宙は ×3 の重み。`WORLD_PRICE=[3.3, 2.3, 1.8, 2.6, 3.3]`。
+  - 数字：初心者 `tmp/critic/r10hand5`＝61〜120 秒の破れ 3・10 秒最大 2・稼ぎ 108→144、海には着かない／人の速さ seed 1〜3 `tmp/r10/t*.txt`＝1 周目各段 ≤69.5 秒、最後の段 242.7／250.8／237.2 秒、エラー 0、overlay_max 1、2 周目 54〜76 秒／速い bot お守り別 `tmp/r10/v*.txt`＝2 周目各段 32〜61 秒、池の買う順がお守りで変わる。
+  - Notion 台帳は更新済み（進行中、要対応 OFF、次回確認日 2026-11-09）。
+- 未達・未確認：
+  - 初心者が 180 秒で海に着かない（でたらめに押すと厚さ Lv4 に届かない）。hand.py は実時間なので回ごとにぶれる（r10hand3 は 176 秒で厚さ Lv4）。
+  - seed 3 の最後の段 237 秒（240 に 3 秒不足）、2 周目の大陸・星が人の速さで 74〜76 秒。
+  - 海〜宇宙を「池と同じ質」と前提なしのエージェントが答えるかは未確認。
+  - iPhone の `/api/proto/sukuu/` は assets（png・jpg）を返さない → 秘書側の作業待ち。
+  - 批評役の r10 の採点はまだ。
+- 道具：`python tools/proto/sukuu_check.py sim --seconds 700 --human --seed N [--perk id] --out X.json > tmp/r10/X.txt`、`python tmp/r8/summ.py <txt>`、`python tmp/critic/hand.py <dir> 180 12`（実時間、ほかの重い処理と同時に回さない）→ `python tmp/r10/hand_check.py tmp/critic/<dir>`、`sukuu_check.py shots --at ... --dir tmp/...`（dir は rec/ からの相対）、`python tmp/r9/sheet.py out.png a.png ...`。
+- 注意：秘書の再起動で長い呼び出しが何度も途切れる。長い処理の前に commit。`docs/STATUS.md`・`rec/manual.json`・`rec/upg_r7.json` はほかの変更なので commit に含めない（`git commit -a` を使わない）。ファイルの書き換えは Edit/Write で（sed 禁止）。
+- 消してよい（自分では消していない）：`tmp/critic/r10hand1`〜`r10hand4`、`tmp/r10/` の f_・g・h・k・m・n・p・q・r・s・u の txt、リポジトリ直下の `tmp_r10_*.json`（sim の --out が直下に出た）、`rec/tmp/r10/stages_a`〜`stages_c`。
+
+### ③ 次の一手
+1. 批評役の r10 の採点が届いたら指摘を直す（NOTES.md に第11回、commit、台帳とこのメモを更新）。
+2. 待つ間：魚の絵（体は gpt-image・尾はコード）とタイトル画面を目標の絵に寄せる。各段の 1 枚を撮り直して一覧を残す。
+3. 段の長さの確認は人の速さ seed 1〜3（できれば 1〜6）と速い bot のお守り 5 種を並列で。
+4. 合格後：予告動画を作り直す（record_sukuu.py の auto_segments を boss_catch／world／earth_reveal に対応）→ 秘書 v2 経由で本人へ。
+
+### ④ 完了の条件
+- 批評役が合格（85 点以上）を出す。
+- 初心者 `hand.py <dir> 180 12`：最初の 3 回の破れ 0、61〜120 秒の破れ ≤4、どの 10 秒も ≤2、61〜120 秒の稼ぎ ≥ 最初の 60 秒、180 秒で海に着く（`hand_check.py` の worlds に 1）。
+- 人の速さ seed 1〜3：1 周目各段 ≤70 秒、最後の段に 240〜360 秒、エラー 0、overlay_max ≤1。速い bot：2 周目の各段 ≥30 秒、お守りで池の買う順が変わる。
+- 5 段のスクショ一覧を前提なしのエージェントに見せて「同じ質のゲーム」と答える。
+- iPhone 実機で `/api/proto/sukuu/` が開けて、新しい絵も出て遊べる（本人か秘書の確認）。
+
+## ★★★★★ 第10回（見た目＋批評 r9 への対応）作業メモ（済み。上の節が新しい）
 - **済み**（詳細と数字は proto/sukuu-html5/NOTES.md「第10回」）。批評役の r10 の採点待ち。残り：初心者が 180 秒で海に着かない、seed 3 の最後の段 237 秒、2 周目の大陸・星が 70 秒を少し超える、iPhone で絵が出ない（秘書側）。
 - 次の一手：r10 の採点が届いたら直す。待つ間は魚の絵（体は絵・尾はコード）とタイトル画面。
 - 秘書の追加指示：①段階（池→海→大陸→星→宇宙）ごとに、数字の大きさに合わせて画面がどう変わるかを各段 1 枚のスクショで残す ②UI は frontend-design スキル（`ai-secretary/tmp/ui-model-eval/frontend-design-SKILL.md`）と「作る→撮る→比べる→直す」で、gpt-image の絵（compare-sukuu.png の 8 番）を目指す。急ぎではない（本人はモデルと見た目を選ぶ段）。

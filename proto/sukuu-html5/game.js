@@ -643,7 +643,9 @@ const WORLD_PRICE = [3.3, 2.7, 1.8, 3.0, 6.5];
 const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
-const omake = () => clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0.4, 1);
+// 一晩目の池は、最後の買い物から 15 秒たつと 1 秒 4% ずつ下がる（最低 3 割。批評 r10：初心者の買い物の間が 50 秒空いた）
+const buyAssist = () => (G.ng === 0 && G.k === 0 ? clamp(1 - (G.wt - (G.lastBuyT || 0) - 15) * 0.04, 0.3, 1) : 1);
+const omake = () => Math.min(buyAssist(), clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0.4, 1));
 // 段ごとの主役の強化（安い）：池＝厚さ／海＝大きさ／大陸＝速乾／星＝厚さと速乾／宇宙＝大きさ。並びは [厚さ, 大きさ, 速乾]
 // 二晩目からは係数の並びを 1 つずつずらす（同じ買い方にならない）
 const UPF = [[1, 1.3, 1.3], [1.1, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
@@ -668,7 +670,7 @@ function buy(i) {
   if (p === Infinity) return false;
   if (G.coins < p) { deny[i] = 0.35; return false; }
   if (G.k === 0 && G.ng === 0) G.pondBuys = pondBuys() + 1;
-  G.coins -= p; G.firstBuy = true;
+  G.coins -= p; G.firstBuy = true; G.lastBuyT = G.wt;
   const b = btnRect(i); boughtFx[i] = 0.6;
   G.spent = 0.6; addShake(4);
   sparks(b.x + b.w / 2, b.y + 50, 26, '#ffe14a', 520);
@@ -718,7 +720,7 @@ function offerPerks() {
 }
 function perkCardRect(i) { return { x: 22 + i * 230, y: 800, w: 216, h: 250 }; }
 function startWorld(k, first) {
-  G.k = k; G.wt = 0; G.lastScoopT = 0; G.lv ={ t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
+  G.k = k; G.wt = 0; G.lastScoopT = 0; G.lastBuyT = 0; G.lv ={ t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
   KINDS = WORLDS[k].kinds.filter(K => !K.ng || G.ng >= K.ng);
   G.rareAt = 5; G.swarmAt = SWARM_AT;
   BOTS.greedK = HUMAN ? 1.08 : 0.95;
