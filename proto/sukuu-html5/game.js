@@ -5,7 +5,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- 設定
-const VERSION = 9;
+const VERSION = 10;
 const W = 720, H = 1280, TAU = Math.PI * 2;
 const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
@@ -500,6 +500,9 @@ const capEff = () => cap() * (1.12 - 0.6 * poi.wet);
 // はじめての人：一晩目の池で、最初の 3 回は破れない。最初の 12 すくいは、ポイの真下にいた金魚が逃げない
 const grace = () => G.ng === 0 && G.k === 0 && (G.dips || 0) <= 3;
 const beginner = () => G.ng === 0 && G.k === 0 && G.scoops < 12;
+// 守りは一度に切らず、12〜EASE_END すくいの間に少しずつ弱める（1 → 0）。批評 r9：守りが切れた直後に 13 秒で 5 回破れた
+const EASE_END = 45;
+const ease = () => (G.ng === 0 && G.k === 0 ? clamp((EASE_END - G.scoops) / (EASE_END - 12), 0, 1) : 0);
 function insidePoi(f) { return Math.hypot(f.x - poi.x, f.y - poi.y) + f.r * 0.55 <= poi.r * 0.98; }
 const tooHeavy = f => f.K.w > cap() + 1e-6;
 // 枠に入りきらない（ポイの大きさが要る）
@@ -571,7 +574,11 @@ const busy = () => G.clear || G.trans || G.ending;
 function pDown(x, y) {
   input.px = x; input.py = y; G.lastInput = G.realT;
   taps.push({ x, y, t: 0 });
-  if (G.ending) { if (G.ending.t > 9) G.ending.tap = true; return; }
+  if (G.ending) {
+    const E = G.ending;
+    if (E.offer && E.pick == null) for (let i = 0; i < 3; i++) { const r = perkCardRect(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) { E.pick = i; E.pickT = E.t; SFX.buy(); } }
+    return;
+  }
   if (busy()) return;
   const si = shopHit(x, y);
   if (si >= 0) { buy(si); return; }
@@ -608,14 +615,14 @@ const WORLD_PRICE = [3.1, 2.2, 1.8, 2.6, 3.3];
 const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
-const omake = () => clamp(1 - (G.wt - OMAKE_T) * 0.025, 0.4, 1);
+const omake = () => clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0.4, 1);
 // 段ごとの主役の強化（安い）：池＝厚さ／海＝大きさ／大陸＝速乾／星＝厚さと速乾／宇宙＝大きさ。並びは [厚さ, 大きさ, 速乾]
 // 二晩目からは係数の並びを 1 つずつずらす（同じ買い方にならない）
 const UPF = [[1, 1.3, 1.3], [1.1, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
 const upf = i => UPF[G.k][(i + G.ng) % 3];
 // はじめての買い物は半額（一晩目の池だけ）
 const firstOff = () => (!G.firstBuy && G.ng === 0 && G.k === 0 ? 0.3 : 1);
-function price(i) { const U = UPG[i], lv = lvOf(i); if (firstOff() < 1) return 9; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff()); }
+function price(i) { const U = UPG[i], lv = lvOf(i); if (firstOff() < 1) return 9; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
 // 次の厚さで新しく持てるようになる獲物（ボタンに出す）
 function nextUnlock() {
   const c0 = cap(), c1 = capOf(G.lv.t + 1);
@@ -659,13 +666,31 @@ function showBanner(s, life) {
 }
 
 // ---------------------------------------------------------------- 世界の始まり・終わり
+// ---------------------------------------------------------------- お守り：周回の始めに 3 つから 1 つ選ぶ。ずっと効き、重ねがけできる
+// 批評 r9：2 周目は同じ流れが速く回るだけで、選ぶものがない
+const PERKS = [
+  { id: 'thick', name: '厚紙守り', desc: ['どの段も', '紙の厚さ Lv1 から'], col: '#d6261f' },
+  { id: 'size', name: '大枠守り', desc: ['どの段も', 'ポイの大きさ Lv1 から'], col: '#2f6fe0' },
+  { id: 'dry', name: '風守り', desc: ['どの段も', '速乾 Lv1 から'], col: '#1fa37a' },
+  { id: 'bell', name: '鈴守り', desc: ['4 匹いっしょに', 'すくうと ×2'], col: '#e0a000' },
+  { id: 'fuku', name: '福袋', desc: ['おまけが', '20 秒早く始まる'], col: '#c2309a' },
+];
+const perkN = id => (G.perks || []).filter(p => p === id).length;
+const QPERK = Q.get('perk');
+// 3 つを選んで見せる（同じ seed なら同じ並び）
+function offerPerks() {
+  const idx = PERKS.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(frng() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx.slice(0, 3);
+}
+function perkCardRect(i) { return { x: 22 + i * 230, y: 800, w: 216, h: 250 }; }
 function startWorld(k, first) {
-  G.k = k; G.wt = 0; G.lv = { t: 0, s: 0, d: 0 };
+  G.k = k; G.wt = 0; G.lv = { t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
   KINDS = WORLDS[k].kinds.filter(K => !K.ng || G.ng >= K.ng);
   G.rareAt = 5; G.swarmAt = SWARM_AT;
   BOTS.greedK = HUMAN ? 1.08 : 0.95;
   fish.length = 0; lifted.length = 0; flyers.length = 0; sucked.length = 0; shards.length = 0; parts.length = 0; rings.length = 0;
-  poi.state = 'hover'; poi.wet = 0; poi.sink = 0; poi.rT = poi.r = radOf(0); poi.x = poi.tx = W / 2; poi.y = poi.ty = 640; poi.cracks = makeCracks();
+  poi.state = 'hover'; poi.wet = 0; poi.sink = 0; poi.rT = poi.r = radOf(G.lv.s); poi.x = poi.tx = W / 2; poi.y = poi.ty = 640; poi.cracks = makeCracks();
   const V = WD().vortex;
   G.vortex = V ? { x: WATER.x + WATER.w * V.x, y: WATER.y + WATER.h * V.y, R: V.R, R0: V.R, core: V.core, start: V.start, on: V.start <= 0, gravity: !!V.gravity, age: 0 } : null;
   WK().forEach((K, ki) => {
@@ -684,6 +709,9 @@ function startWorld(k, first) {
 const NIGHT = ['一晩目', '二晩目', '三晩目', '四晩目', '五晩目'];
 // 二晩目からは、前の晩に救った分のご縁で値段が上がる（×2、×3 …）
 const ngMul = () => 1 + 0.5 * G.ng;
+// 二晩目からは値段も少し上がる（お守りの分だけ速くなりすぎないように。批評 r9：2 周目の海が 27 秒）
+const NG_PRICE = 0.35;
+const ngPrice = () => 1 + NG_PRICE * G.ng;
 function bossCaught(f) {
   ev('boss_catch', { kind: f.K.id });
   G.clear = { t: 0 };
@@ -730,7 +758,9 @@ function lift() {
   splash(poi.x, poi.y, 10, 0.9);
   if (!caught.length) { poi.dripT = 0.3; return; }
   let wsum = caught.reduce((s, f) => s + f.K.w, 0);
-  if (wsum > capEff() && (grace() || (beginner() && !caught.some(f => f.K.boss)))) {
+  const hasBoss = caught.some(f => f.K.boss);
+  // 守りが弱まる間は、少しの重すぎ（持てる重さの 1+0.8×ease 倍まで）なら破れずにこぼれる
+  if (wsum > capEff() && (grace() || (!hasBoss && (beginner() || wsum <= capEff() * (1 + 0.8 * ease()))))) {
     // 最初の 3 回（と最初の 12 すくいの間の重すぎ）は破れない：重いものからこぼれる（重さの仕組みだけ見せる）
     caught.sort((a, b) => a.K.w - b.K.w);
     while (caught.length && wsum > capEff()) { const f = caught.pop(); wsum -= f.K.w; f.slip = 0.6; f.flee = 1; splash(f.x, f.y, 10, 0.9); }
@@ -741,7 +771,7 @@ function lift() {
   poi.wet = Math.min(0.95, poi.wet + 0.08);
   poi.dripT = 0.8;
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
-  const n = caught.length, m = mult(n) * (beginner() ? 2 : 1);
+  const n = caught.length, m = mult(n) * (1 + ease()) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);
   caught.forEach((f, i) => {
@@ -785,7 +815,10 @@ function tear(caught, why) {
   for (const side of [-1, 1]) shards.push({ side, a, jag, x: poi.x, y: poi.y, r: poi.r, vx: Math.cos(a + Math.PI / 2) * side * 90, vy: Math.sin(a + Math.PI / 2) * side * 90 + 30, rot: 0, vr: side * 1.5, t: 0 });
   for (let i = 0; i < 18; i++) { const b = R(0, TAU), d = R(0, poi.r); parts.push({ k: 'shred', x: poi.x + Math.cos(b) * d, y: poi.y + Math.sin(b) * d, z: 10, vx: Math.cos(b) * R(80, 260), vy: Math.sin(b) * R(80, 260), vz: R(150, 380), s: R(4, 10), c: why === 'burn' ? '#5a3a20' : '#eef3f6', life: 2, rot: R(0, 6) }); }
   G.total = null;
-  if (!G.banner) floatText(why === 'burn' ? 'ジュッ！' : why === 'gravity' ? 'ズズッ…' : 'ビリッ！', poi.x, clamp(poi.y - poi.r - 30, 300, 1000), 96, '#ffffff', '#c01010', 0.9, -0.15);
+  // 重さで破れたら、理由を出して「紙の厚さ」を 4 秒光らせる（何を買えばよいかが分かる）
+  const heavy = why === 'heavy' && !bossTear;
+  if (heavy) G.thickHint = 4;
+  if (!G.banner) floatText(why === 'burn' ? 'ジュッ！' : why === 'gravity' ? 'ズズッ…' : heavy ? 'ビリッ！ 重すぎ' : 'ビリッ！', poi.x, clamp(poi.y - poi.r - 30, 300, 1000), 96, '#ffffff', '#c01010', 0.9, -0.15);
   (caught || []).forEach(f => { f.alert = 0; f.flee = 1.2; splash(f.x, f.y, 6, 0.8); });
   splash(poi.x, poi.y, 22, 1.3);
 }
@@ -852,14 +885,15 @@ function update(dt) {
     if (input.down && !G.clear) {
       poi.state = 'dip'; poi.dipT = 0; SFX.dip(); G.dips = (G.dips || 0) + 1;
       // 沈めた瞬間にポイの下にいた群れだけが入る（外の群れは流れ込まない＝見たとおりにすくえる）
-      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r;
+      // はじめての人は、ポイの少し外にいた金魚も「入った」扱いにして寄せる（狙いが甘くてもすくえる）
+      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r * (1 + 0.6 * ease());
       splash(poi.x, poi.y, 8, 0.7); rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 120, life: 0.6, t: 0, w: 5 });
     }
   } else if (poi.state === 'dip') {
     poi.dipT += sdt; poi.sink = Math.min(1, poi.sink + sdt / 0.12);
     const heatMul = 1 + poi.heat * 6, vMul = V && V.on && Math.hypot(V.x - poi.x, V.y - poi.y) < V.R ? 1.6 : 1;
     // 大きいポイほど紙の面が広く、早く濡れる（大きさと引き換え）
-    poi.wet += ((beginner() ? 0.15 : 0.3) + poi.speed * 0.00045) * dryOf(G.lv.d) * heatMul * vMul * (1 + 0.1 * G.lv.s) * sdt;
+    poi.wet += ((0.3 - 0.15 * ease()) + poi.speed * 0.00045) * dryOf(G.lv.d) * heatMul * vMul * (1 + 0.1 * G.lv.s) * sdt;
     if (poi.heat > 0) poi.burn = Math.min(1, poi.burn + poi.heat * sdt * 0.8);
     if (poi.speed > 300 && frng() < 0.4) rings.push({ x: poi.x + R(-poi.r, poi.r), y: poi.y + R(-poi.r, poi.r), r: 4, vr: 90, life: 0.5, t: 0, w: 2 });
     const inside = fish.filter(f => f.spawn >= 1 && insidePoi(f));
@@ -952,7 +986,7 @@ function update(dt) {
   for (let i = sucked.length - 1; i >= 0; i--) { const s = sucked[i]; s.t += sdt; if (s.t > 0.7) sucked.splice(i, 1); }
   updateParts(sdt);
 
-  if (G.wt >= OMAKE_T && !G.clear) seenOnce('omake_' + G.k);
+  if (G.wt >= OMAKE_T - 20 * perkN('fuku') && !G.clear) seenOnce('omake_' + G.k);
   if (!G.afforded && G.coins >=Math.min(price(0), price(1), price(2))) { G.afforded = true; ev('afford', { coins: G.coins }); }
   decay(dt);
 }
@@ -988,6 +1022,7 @@ function decay(dt) {
   for (let i = taps.length - 1; i >= 0; i--) { taps[i].t += dt; if (taps[i].t > 0.4) taps.splice(i, 1); }
   G.disp += (G.coins - G.disp) * (1 - Math.exp(-dt * 10)); if (Math.abs(G.coins - G.disp) < 0.5) G.disp = G.coins;
   G.bump = Math.max(0, G.bump - dt * 5); G.bagBump = Math.max(0, G.bagBump - dt * 4);
+  G.thickHint = Math.max(0, (G.thickHint || 0) - dt);
   for (let i = 0; i < 3; i++) { press[i] = Math.max(0, press[i] - dt); deny[i] = Math.max(0, deny[i] - dt); boughtFx[i] = Math.max(0, boughtFx[i] - dt); }
   G.flash = Math.max(0, G.flash - dt * 2.2);
   if (G.banner) { G.banner.t += dt; if (G.banner.t > G.banner.life) G.banner = null; }
@@ -1048,7 +1083,9 @@ function updateFish(dt) {
     }
     // 逃げる（沈めたポイの近く）
     const dx = f.x - poi.x, dy = f.y - poi.y, d = Math.hypot(dx, dy) || 1, range = poi.r + 110 + f.r;
-    if (dip && d < range && !K.root && !(f.inDip && beginner())) {
+    const helped = f.inDip && !K.boss && ease() > 0.3;
+    if (helped && dip && !insidePoi(f)) { fx -= dx / d * 900; fy -= dy / d * 900; }
+    if (dip && d < range && !K.root && !helped) {
       if (f.alert < 0) f.alert = 0.16 + rng() * 0.3 + (K.school ? 0 : 0.08) + (K.boss ? 0.15 : 0);
       f.alert -= dt;
       if (f.alert <= 0) { f.flee = 1; const s = (K.school ? 1100 : 900) * (1 - d / range) + 250; fx += dx / d * s * (K.boss ? 0.5 : 1); fy += dy / d * s * (K.boss ? 0.5 : 1); }
@@ -1069,7 +1106,7 @@ function updateFish(dt) {
     }
     f.vx += fx * dt; f.vy += fy * dt;
     // はじめての人：沈めたポイの上にいる金魚は、紙の上でゆっくりになる（見たとおりにすくえる）
-    const rest = dip && f.inDip && beginner() && insidePoi(f);
+    const rest = dip && helped && insidePoi(f);
     const sp = Math.hypot(f.vx, f.vy) || 1, mx = K.spd * (rest ? 0.2 : (1 + f.flee * 1.8) * (f.danger ? 1.6 : 1)), mn = K.spd * (rest ? 0.05 : 0.3);
     if (sp > mx) { f.vx *= mx / sp; f.vy *= mx / sp; } else if (sp < mn) { f.vx *= mn / sp; f.vy *= mn / sp; }
     f.x += f.vx * dt; f.y += f.vy * dt;
@@ -1084,7 +1121,20 @@ function updateEnding(dt) {
   const E = G.ending; E.t += dt;
   if (E.t > 3 && E.t < 8.5) { E.fw = (E.fw || 0) - dt; if (E.fw <= 0) { E.fw = 0.35 + frng() * 0.3; firework(R(120, W - 120), R(260, 620)); } }
   for (let i = FIRE.length - 1; i >= 0; i--) { const p = FIRE[i]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 120 * dt; p.vx *= 0.985; p.vy *= 0.985; if (p.t > p.life) FIRE.splice(i, 1); }
-  if (E.t > ENDING_LEN + 1 && (BOT || E.tap)) {
+  if (E.t > ENDING_LEN && !E.offer) {
+    E.offer = offerPerks();
+    // 試験用：?perk=id のときは必ず並べる
+    const qi = PERKS.findIndex(P => P.id === QPERK);
+    if (BOT && qi >= 0 && !E.offer.includes(qi)) E.offer[0] = qi;
+  }
+  // bot は ?perk=id があればそれを、なければ 1 枚目を選ぶ
+  if (BOT && E.offer && E.pick == null && E.t > ENDING_LEN + 1) {
+    const want = E.offer.findIndex(i => PERKS[i].id === QPERK);
+    E.pick = want >= 0 ? want : 0; E.pickT = E.t;
+  }
+  if (E.pick != null && E.t > E.pickT + 0.5) {
+    const perk = PERKS[E.offer[E.pick]];
+    G.perks = (G.perks || []).concat(perk.id); ev('perk', { id: perk.id, offer: E.offer.map(i => PERKS[i].id) });
     G.ending = null; G.ng++; FIRE.length = 0; ev('restart', { ng: G.ng });
     G.coins = G.disp = 0; G.seen = {}; BOTS.bossFails = {};
     startWorld(0, false);
@@ -1876,6 +1926,13 @@ function drawShop(c) {
     const bh = b.h - 10;
     c.save(); c.translate(b.x + b.w / 2 + dshk, b.y + bh / 2); c.scale(ps, ps);
     const x = -b.w / 2, y = -bh / 2;
+    if (i === 0 && G.thickHint > 0 && !maxed) {
+      // 重さで破れた直後：紙の厚さのまわりに脈打つ光の輪
+      const pulse = 0.5 + 0.5 * Math.sin(G.realT * 10);
+      c.save(); c.globalAlpha = Math.min(1, G.thickHint) * (0.5 + 0.5 * pulse);
+      c.lineWidth = 8; c.strokeStyle = '#fff27a'; c.shadowColor = '#ffd23a'; c.shadowBlur = 24;
+      rr(c, x - 6, y - 6, b.w + 12, bh + 12, 30); c.stroke(); c.restore();
+    }
     drawShopPlate(c, x, y, b.w, bh, can && !maxed, maxed ? 1 : clamp(G.coins / p, 0, 1));
     const ix = 0, iy = y + 46, ink = can && !maxed ? '#7a2a00' : '#ffd23a';
     if (i === 0) {
@@ -2093,7 +2150,38 @@ function drawEnding(c, t) {
     c.save(); c.globalAlpha = a2; text(c, '救った いのち ' + fmt(G.saved), W / 2, 720, 44, '#9affc8', '#000', 8); c.restore();
   }
   drawBag(c, BAG.x, BAG.y, BAG.r, clamp((t - 2.8) / 1, 0, 1) * 0.8);
-  if (!BOT && t > ENDING_LEN) text(c, 'タップで もう一度', W / 2, H - 80, 32, 'rgba(255,255,255,0.75)', null, 0, 'center', '700');
+  if (G.ending.offer) drawPerkCards(c, G.ending);
+}
+// 次の晩に持っていくお守りを 3 枚から選ぶ（店のボタンと同じ金の板）
+function drawPerkCards(c, E) {
+  const a = clamp((E.t - ENDING_LEN) / 0.5, 0, 1);
+  c.save(); c.globalAlpha = a;
+  text(c, '次の晩へ お守りを ひとつ', W / 2, 772, 34, '#ffffff', '#1a0a30', 7);
+  E.offer.forEach((pi, i) => {
+    const P = PERKS[pi], r = perkCardRect(i), picked = E.pick === i, dim = E.pick != null && !picked;
+    const pop = picked ? 1 + 0.08 * Math.sin(clamp((E.t - E.pickT) / 0.5, 0, 1) * Math.PI) : 1;
+    c.save(); c.translate(r.x + r.w / 2, r.y + r.h / 2 + (1 - a) * 40); c.scale(pop, pop);
+    c.globalAlpha = a * (dim ? 0.35 : 1);
+    const x = -r.w / 2, y = -r.h / 2;
+    drawShopPlate(c, x, y, r.w, r.h, true, 1);
+    drawOmamori(c, 0, y + 70, P.col, perkN(P.id));
+    text(c, P.name, 0, y + 146, 30, '#3a1404', null, 0);
+    text(c, P.desc[0], 0, y + 186, 19, '#7a3a10', null, 0, 'center', '800');
+    text(c, P.desc[1], 0, y + 212, 19, '#7a3a10', null, 0, 'center', '800');
+    c.restore();
+  });
+  c.restore();
+}
+// お守り袋：色の布・金のひも・白い札。持っている数を右上に小さく
+function drawOmamori(c, x, y, col, owned) {
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; rr(c, -26, -34, 56, 76, 12); c.fill();
+  c.fillStyle = col; rr(c, -28, -38, 56, 76, 12); c.fill();
+  c.lineWidth = 3; c.strokeStyle = '#ffe58a'; rr(c, -22, -32, 44, 64, 9); c.stroke();
+  c.fillStyle = '#fffaf0'; rr(c, -11, -20, 22, 36, 4); c.fill();
+  c.strokeStyle = '#ffd23a'; c.lineWidth = 4; c.beginPath(); c.moveTo(-8, -38); c.quadraticCurveTo(0, -56, 8, -38); c.stroke();
+  if (owned > 0) text(c, '×' + owned, 40, -32, 20, '#ffffff', '#5a1a00', 5);
+  c.restore();
 }
 const ENDING_FISH = [0, 1, 2, 3, 0, 2, 3].map((v, i) => ({ K: { draw: i === 3 ? 'kin' : 'kingyo', r: 30 }, r: 30 + (i % 3) * 6, var: v, phase: 0, patches: [], isKin: i === 3 }));
 
@@ -2101,7 +2189,7 @@ const ENDING_FISH = [0, 1, 2, 3, 0, 2, 3].map((v, i) => ({ K: { draw: i === 3 ? 
 const SAVE_KEY = 'sukuu_save';
 function save() {
   if (BOT || FIXED) return;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: VERSION, k: G.k, coins: G.coins, lv: G.lv, saved: G.saved, kin: G.kin, rescued: G.rescued, ng: G.ng, seen: G.seen, firstBuy: !!G.firstBuy, dips: G.dips || 0, scoops: G.scoops })); } catch (e) { }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: VERSION, k: G.k, coins: G.coins, lv: G.lv, saved: G.saved, kin: G.kin, rescued: G.rescued, ng: G.ng, seen: G.seen, firstBuy: !!G.firstBuy, dips: G.dips || 0, scoops: G.scoops, perks: G.perks || [] })); } catch (e) { }
 }
 function load() {
   if (BOT || FIXED) return false;
@@ -2109,7 +2197,7 @@ function load() {
     if (Q.get('reset') === '1') { localStorage.removeItem(SAVE_KEY); return false; }
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (!s || s.v !== VERSION) return false;
-    Object.assign(G, { coins: s.coins, saved: s.saved, kin: s.kin, rescued: s.rescued, ng: s.ng || 0, seen: s.seen || {}, firstBuy: !!s.firstBuy, dips: s.dips || 0, scoops: s.scoops || 0 });
+    Object.assign(G, { coins: s.coins, saved: s.saved, kin: s.kin, rescued: s.rescued, ng: s.ng || 0, seen: s.seen || {}, firstBuy: !!s.firstBuy, dips: s.dips || 0, scoops: s.scoops || 0, perks: s.perks || [] });
     G.disp = G.coins;
     startWorld(s.k, true); G.lv = s.lv; poi.rT = poi.r = radOf(G.lv.s);
     return true;

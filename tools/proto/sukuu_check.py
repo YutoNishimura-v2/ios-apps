@@ -113,7 +113,7 @@ def report(evs):
 
 def cmd_sim(a):
     from playwright.sync_api import sync_playwright
-    q = f"bot=1&fixed=1&seed={a.seed}" + ("&human=1" if a.human else "") + (f"&world={a.world}" if a.world else "")
+    q = f"bot=1&fixed=1&seed={a.seed}" + ("&human=1" if a.human else "") + (f"&world={a.world}" if a.world else "") + (f"&perk={a.perk}" if a.perk else "")
     with sync_playwright() as p:
         browser, page, errors = open_page(p, q)
         # 描画も時々回して、描画のエラーも拾う
@@ -167,7 +167,7 @@ def cmd_upg(a):
 
 def cmd_shots(a):
     from playwright.sync_api import sync_playwright
-    q = f"bot=1&fixed=1&seed={a.seed}" + ("&human=1" if a.human else "") + (f"&world={a.world}" if a.world else "")
+    q = f"bot=1&fixed=1&seed={a.seed}" + ("&human=1" if a.human else "") + (f"&world={a.world}" if a.world else "") + (f"&perk={a.perk}" if a.perk else "")
     outdir = REC / a.dir
     outdir.mkdir(parents=True, exist_ok=True)
     ats = [float(x) for x in a.at.split(",")]
@@ -188,9 +188,11 @@ def main():
     sp = ap.add_subparsers(dest="cmd", required=True)
     s = sp.add_parser("sim"); s.add_argument("--seconds", type=float, default=400); s.add_argument("--human", action="store_true")
     s.add_argument("--seed", type=int, default=1); s.add_argument("--world", type=int, default=0); s.add_argument("--out", default="events_r7.json")
+    s.add_argument("--perk", default="")  # 周回の始めに bot が選ぶお守り（thick/size/dry/bell/fuku）
     sp.add_parser("upg")
     s = sp.add_parser("shots"); s.add_argument("--at", required=True); s.add_argument("--human", action="store_true")
     s.add_argument("--seed", type=int, default=1); s.add_argument("--world", type=int, default=0); s.add_argument("--dir", default="shots_r7")
+    s.add_argument("--perk", default="")
     a = ap.parse_args()
     {"sim": cmd_sim, "upg": cmd_upg, "shots": cmd_shots}[a.cmd](a)
 
