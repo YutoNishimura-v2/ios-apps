@@ -1,6 +1,51 @@
 # 2 本目のアプリ（『すくう』）引き継ぎメモ
 
-最終更新：2026-11-08（Claude Code、ios-apps）— 第18回（批評 r17＝76 点への対応）済み・批評 r18 待ち。まず下の「第18回」を読み、道具・完了の条件は「引き継ぎ（第17回後）」を使う。
+最終更新：2026-11-08（Claude Code、ios-apps）— 第19回（批評 r18＝76 点への対応・見た目のまとめ直し）済み・批評 r19 待ち。まず下の「引き継ぎ（第19回後）」を読む。
+
+## ★★★★★★★★★★★★★★★★★★★★★★ 引き継ぎ（第19回後。いちばん新しい。下の節より優先）
+### ① 課題
+- 本人：「プロダクトレベルにしてから出せ」。批評役との自動ループ（見た目の大直しの回、0/40 から。合格 85 点）。r18＝76 点が 3 回続いたので、第19回は小直しでなく見た目をまとめて作り直した。
+### ② 今の状態
+- 第19回の中身・数字は `proto/sukuu-html5/NOTES.md`「第19回」。index `game.js?v=19`、VERSION 13 のまま、push なし。
+- お手本画像 `tmp/r19/target/targets5.png`（各段 1 枚、gpt-image）。直す前と後 `tmp/r19/compare_r18_r19.png`、最新 `tmp/r19/h4/stages5.png`・`sheet10.png`。
+- 数字：h4/f4＝エラー 0・poi_out 0・hand_over 0・art failed 0・細い輪の同時最大 3（`ev('rings_max')`）。sim seed1〜3 各段 ≤62.9 秒・宇宙 73.7/83.0/84.3 秒。初心者 hand（`tmp/r11/u_report.txt`）4 項目 ok。
+- 前提なしの haiku（h4）6/7/6/7/6・5/6/5/7/4（r18：5/6/6/6/6）。全段 ≥7 は未達。残る指摘：池の魚が多い、大陸の小島、宇宙で物が散る、+数字・おまけ札、ポイの輪が主に重なる。
+- 道具は「引き継ぎ（第18回後）」と同じ。ev.py は `tmp/r18/ev.py`。hand の tag は u まで使用。
+- 消してよい（自分では消していない）：`tmp/r19/h1`〜`h3`・`f1`〜`f3`、`proto/sukuu-html5/rec/r19_sim_*.json`・`r19_simL_*.json`。
+### ③ 次の一手
+1. 批評 r19 が届いたらその指摘を直す（NOTES.md に第20回、commit、このメモと台帳、報告）。
+2. 候補：池は主（鯉）の見せ方（魚の数は初心者の基準に響くので hand で確かめてから）、宇宙の物の散らばり、おまけ札をボタンの内側へ、+数字の位置。
+### ④ 完了の条件
+- 「引き継ぎ（第18回後）」④と同じ（批評役 85 点、前提なし 2 回で全段 ≥7、枠の外 0、初心者 4 基準、人の速さ seed1〜3、iPhone 実機）。追加：細い輪の同時最大 ≤3（今 3 ○）。
+
+## ★★★★★★★★★★★★★★★★★★★★★ 引き継ぎ（第18回後。いちばん新しい。下の節より優先）
+### ① 課題
+- 本人：「プロダクトレベルにしてから出せ」（iPhone で 5 分飽きない／強化が遊び方を変える／池→海→大陸→星→宇宙で「すくう＝救う」）。
+- 批評役「金魚すくい批評」との自動ループ（再開後 7/40 往復済み、合格 85 点まで本人に出さない）。批評が届くたびにその 3 つを直し、日本語で「やったこと／結果／本人に必要な判断」を報告。直近は r17＝76 点（第18回で対応済み、r18 の採点待ち）。
+
+### ② 今の状態
+- ブランチ main、最新 commit a44956e（docs）、コードは cb04ac5。push なし。index `game.js?v=18`、VERSION 13 のまま。
+- 未 commit は他セッションの `docs/STATUS.md`・`rec/manual.json`・`rec/upg_r7.json`・`rec/fps.json` と `tmp/`（含めない、`git commit -a` 禁止）。
+- 第18回で入れたもの（詳細 `proto/sukuu-html5/NOTES.md`「第18回」と下の「第18回」の節）：`poiMargin`・`clampPoiX/Y`（ポイの輪がまるごと枠の中）、`handleLen`（柄 r×1.25、90〜190）、`handAngFor`（48 方向から枠の内側に入る向き、`outOf`）、左向きの手は反転、`ev('poi_out')`。`drawWetGauge` は縁の上。きしみ・重すぎは縁の色と太さ（`rim`）。キンちゃんは光の輪 1 本（重すぎ＝赤い破線、大きさ不足＝橙の輪だけ）、ポイが重なると縁が金色（`poi.onBoss`・`POI_GOLD`）。主を捕った直後は衝撃波 1 本。`GALAXY_SEP` 1.15（1.7 では宇宙 107 秒）・`GALAXY_SIZE`・`GALAXY_GLOW`。星雲は `featherEdge`。買い物の指はボタンの右上。
+- 数字：`tmp/r18/h3`・`tmp/r18/f3`＝エラー 0・art_ready failed 0・poi_out 0・hand_over 0・10 匹以上の破れ 0。`tmp/r11/t_report.txt`（tag t）＝初心者 hand 2 回 4 項目 ok（すくえない最長 9.4/13.9 秒、買い物の間 20.8/22.4 秒、谷なし、海 130/124 秒）、人の速さ seed1〜3 各段 ≤65.4 秒・宇宙 73.3/75.9/83.1 秒・出来事 ≥5、速い bot 宇宙 70.9 秒。
+- 前提なしの haiku 3 回（`tmp/r18/h3/stages5.png`・`sheet10.png`）：宇宙 6.5/7/6、池 6/7・海 6.5/7・大陸 6/6・星 6.5/6。毛玉・細い波紋・キンちゃんの輪の重なりは挙がらない。挙がった弱点：t130 で島の上にポイの輪と重すぎの破線が重なる、t190 で +数字がポイの輪にかかる、t220（移り変わり）の房、t260 右側に小さな銀河 4 個のかたまりが残る。
+- Notion 台帳（page 4110e8c7da4d81f884aeeb19ccac4310）は第18回で更新済み（進行中、要対応 OFF、次回確認日 2026-11-09）。
+- 道具：http サーバー 8765（`curl http://127.0.0.1:8765/game.js` で 200）→ `cd tmp/critic && python play2.py ../r18/<名前> 420 "human=1&seed=3" 10`（速い bot は 360 ""）→ `python sheet.py ../r18/<名前> ../r18/<名前>/stages5.png "20,70,130,190,260" 5`（10 枚は "20,50,70,100,120,140,160,190,220,260" 10）→ 前提なしの haiku に採点。数字は `python tmp/r18/ev.py <dir>...`（poi_out・hand_over・art・破れ・world・boss）。速い試算は `python tools/proto/sukuu_check.py sim --seconds 340 --human --seed N --out r18_sim_x.json`（out は rec/ からの相対、11 秒、play2 と同じ結果）。長い確認は PowerShell `Start-Process -FilePath 'C:\Program Files\Git\bin\bash.exe' -ArgumentList 'tmp/r11/run_hand2.sh','<tag>' -WorkingDirectory C:\Users\yuton\workspace\ios-apps -WindowStyle Hidden` → `tmp/r11/<tag>_report.txt` の最後に DONE（約 9 分。使った tag：n〜t）。git bash に pgrep はない。
+- 消してよい（自分では消していない）：`tmp/r18/h1`・`h2`・`f1`・`f2`、`proto/sukuu-html5/rec/r18_sim_*.json`、`tmp/r17/h`〜`h3`・`f`・`f2`。
+
+### ③ 次の一手
+1. 批評 r18 が届いたらその 3 つを直す（NOTES.md に第19回、commit、このメモと台帳を更新、報告）。
+2. 届くまでの候補：島・惑星の上でポイの輪と重すぎの破線が重なる、+数字がポイの輪にかかる（`totalPos`）、宇宙の小さな銀河のかたまり。
+3. 合格後：予告動画の作り直し（`record_sukuu.py` の auto_segments を boss_catch／world／earth_reveal に）→ 秘書経由で本人へ。
+4. 秘書側の作業待ち：iPhone の `/api/proto/sukuu/` が assets（`assets/s/` 含む）を返さない。
+
+### ④ 完了の条件
+- 批評役 85 点以上で合格。
+- 前提なしの haiku 2 回で 5 段とも ≥7（今：池 6/7・海 6.5/7・大陸 6/6・星 6.5/6・宇宙 6.5/7/6）。
+- play2 の全スクショで枠の外の文字・絵 0 件、`poi_out` 0、`hand_over` 0、`art_ready` failed 0（今 ○）。
+- 初心者 hand 2 回（`run_hand2.sh`）：すくえない最長 ≤20 秒・買い物の間 ≤30 秒・30 秒ごとの稼ぎが下がらない・海 ≤150 秒（今 ○）。
+- 人の速さ seed1〜3：各段 ≤70 秒・宇宙 60〜90 秒で出来事 ≥3・10 匹以上の破れ ≤3／周・エラー 0・overlay_max ≤1（今 ○）。
+- iPhone 実機で `/api/proto/sukuu/` が開けて絵も出る（本人か秘書の確認）。
 
 ## ★★★★★★★★★★★★★★★★★★★★ 第18回（批評 r17＝76 点への対応、自動ループ 再開 7/40）（いちばん新しい）
 - 批評 r17 の 3 つ：①ポイ・輪・柄が枠の外に出る ②キンちゃんを捕る瞬間に輪が 3 重 ③銀河の房・星雲の毛玉・大陸で主を捕った直後の細い輪 10 本以上（＋海 70 秒の買い物の指が説明文を隠す）
