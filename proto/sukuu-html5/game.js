@@ -769,6 +769,24 @@ function bossCaught(f) {
 const SNAP = mk(W, H), snapCtx = SNAP.getContext('2d');
 const OFF = mk(W, H), offCtx = OFF.getContext('2d');
 const CLEAR_LEN = 1.5, TRANS_LEN = 3.6, EARTH_LEN = 6.6, ENDING_LEN = 9;
+// 宇宙の主（キンちゃん）を捕ったときだけ、大写しを見せるため長めに
+const KIN_CLOSE_LEN = 2.4;
+const clearLen = () => (G.k === WORLDS.length - 1 ? KIN_CLOSE_LEN : CLEAR_LEN);
+const KIN_CLOSE = { K: { draw: 'kin', r: 150 }, r: 150, var: 0, phase: 0, patches: [], isKin: true, id: 0 };
+// 批評 r11：最後の主の魚が画面幅の 10% だった。捕った瞬間に水槽の真ん中へ大きく（幅の約 4 割）映す
+function drawKinClose(c, t) {
+  const u = clamp((t - 0.12) / 0.3, 0, 1) * clamp((KIN_CLOSE_LEN - t) / 0.35, 0, 1);
+  if (u <= 0) return;
+  const cx = W / 2, cy = (TUB.y + SHOP_Y) / 2, s = 0.75 + 0.25 * easeOut(clamp((t - 0.12) / 0.5, 0, 1));
+  c.save();
+  c.fillStyle = `rgba(10,0,30,${0.5 * u})`; c.fillRect(0, TUB.y - 8, W, SHOP_Y - TUB.y + 8);
+  c.globalAlpha = u; c.globalCompositeOperation = 'lighter';
+  c.drawImage(bokehSprite('rgba(255,200,80,A)'), cx - 300 * s, cy - 300 * s, 600 * s, 600 * s);
+  c.globalCompositeOperation = 'source-over';
+  KIN_CLOSE.phase = G.realT * 5;
+  drawCreature(c, KIN_CLOSE, cx, cy, -0.25 + Math.sin(G.realT * 2) * 0.06, s, u);
+  c.restore();
+}
 // 大陸 → 星（地球の正体）だけ長く見せる
 const transLen = () => G.trans && G.trans.from === 2 ? EARTH_LEN : TRANS_LEN;
 function beginTransition() {
@@ -892,7 +910,7 @@ function update(dt) {
     if (G.trans.t >= transLen()) { G.trans = null; showBanner(WD().label, 1.8); ev('trans_end'); }
     decay(dt); return;
   }
-  if (G.clear) { G.clear.t += dt; if (G.clear.t >= CLEAR_LEN) { beginTransition(); return; } }
+  if (G.clear) { G.clear.t += dt; if (G.clear.t >= clearLen()) { beginTransition(); return; } }
   let sdt = dt;
   if (G.slowmo > 0) { G.slowmo -= dt; sdt = dt * 0.25; }
   if (G.hitstop > 0) { G.hitstop -= dt; sdt = 0; }
@@ -1632,8 +1650,8 @@ function drawIsland(c, f, r, t, kind) {
   const slip = f.slip > 0 ? Math.sin(t * 60) * 3 * f.slip : 0;
   c.translate(slip, 0);
   const R0 = kind === 'continent' ? r * 0.62 : kind === 'bigisland' ? r * 0.6 : r * 0.55;
-  // 小島は 3 種（ヤシの島・小屋の島・灯台の島）。小屋と灯台は向きを変えない
-  const smallVar = kind === 'island' ? f.id % 3 : 0;
+  // 小島は 2 種（小屋の島・灯台の島。丸いヤシの島は小さいと緑の点に見えた）。向きは変えない
+  const smallVar = kind === 'island' ? 1 + ((f.id | 0) % 2) : 0;
   const art = smallVar ? 'isl_small' + (smallVar + 1) : ISLAND_ART[kind];
   if (IMG[art]) {
     // 批評 r11：小さい島が緑の点に見えた。絵だけ大きく描く（すくえる大きさは変えない）
@@ -1942,6 +1960,7 @@ function renderScene(c, hud) {
   for (const tp of taps) { const u = tp.t / 0.4; c.strokeStyle = `rgba(255,255,255,${1 - u})`; c.lineWidth = 4; c.beginPath(); c.arc(tp.x, tp.y, 10 + u * 50, 0, TAU); c.stroke(); }
   if (G.banner) drawBanner(c, G.banner);
   if (G.flash > 0) { c.fillStyle = `rgba(255,255,255,${Math.min(0.85, G.flash)})`; c.fillRect(0, TUB.y - 8, W, SHOP_Y - TUB.y + 8); }
+  if (G.clear && G.k === WORLDS.length - 1 && !G.ending) drawKinClose(c, G.clear.t);
   if (G.caption) {
     const u = G.caption.t / G.caption.life, s = elastic(Math.min(1, G.caption.t * 4));
     c.save(); c.translate(W / 2, 270); c.scale(s, s); c.globalAlpha = u > 0.85 ? (1 - u) / 0.15 : 1;
