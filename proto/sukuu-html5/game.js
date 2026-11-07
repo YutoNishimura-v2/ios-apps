@@ -235,7 +235,7 @@ window.__artReady = artReady;
 function loadSprite(k, attempt) {
   const im = new Image();
   const settle = ok => { artDone++; if (!ok) ev('art_fail', { k }); if (artReady()) ev('art_ready', { failed: SPRITES.filter(s => !IMG[s]).length }); };
-  im.onload = () => { const s = shrinkImage(im, SPRITE_MAX[k] || 384); IMG[k] = k.startsWith('isl_small') || k === 'isl_volcano' ? featherEdge(s) : s; settle(true); };
+  im.onload = () => { const s = shrinkImage(im, SPRITE_MAX[k] || 384); IMG[k] = k.startsWith('isl_small') || k === 'isl_volcano' || k === 'sp_nebula' ? featherEdge(s) : s; settle(true); };
   im.onerror = () => { const srcs = ART_SRC(k); if (attempt + 1 < srcs.length) setTimeout(() => loadSprite(k, attempt + 1), 300); else settle(false); };
   im.src = ART_SRC(k)[attempt];
 }
@@ -642,23 +642,44 @@ function poiHit(x, y, hw, hh) {
   return dx * dx + dy * dy < (poi.r + 12) * (poi.r + 12) ? 1 : 0;
 }
 // 批評 r16：ポイが下の方にあると柄と手が下のボタンにかぶった → 柄の先（手）がボタンの上に来ない角度を選ぶ
-const HANDLE_ANGS = [0.95, 0.55, 0.15, -0.3, -0.7];
-function handAngFor(x, y, r) {
-  const L = Math.max(90, r * 1.7), dEnd = r + L, dHand = r + L * 0.78;
-  // 手の絵は中心から下へ約 55px（影を含む）。柄の先も手もボタンの上端より上に収める
-  for (const a of HANDLE_ANGS) if (y + Math.sin(a) * dHand + 60 < SHOP_Y && y + Math.sin(a) * dEnd + 12 < SHOP_Y) return a;
-  return HANDLE_ANGS[HANDLE_ANGS.length - 1];
+// 批評 r17：ポイの柄と手が枠の外（右の縁・上の紙のゲージ）に出た → 柄は短めにし、枠の内側に収まる向きを選ぶ
+/** 柄の長さ（ポイの半径 r から。描く・当たり・向き選びで同じ値を使う） */
+const handleLen = r => clamp(r * 1.25, 90, 190);
+/** 柄の向きの候補：右下を好み、入らなければ左下・上向きへ（48 方向） */
+const HANDLE_CANDS = Array.from({ length: 48 }, (_, i) => i * TAU / 48);
+/** 点 (x, y) が枠（遊び場の内側 pad、下はボタンの上 padB）からはみ出す量 */
+function outOf(x, y, pad, padB) {
+  return Math.max(0, WATER.x + pad - x) + Math.max(0, x - (WATER.x + WATER.w - pad)) + Math.max(0, WATER.y + pad - y) + Math.max(0, y - (SHOP_Y - padB));
 }
+function handAngFor(x, y, r) {
+  const L = handleLen(r), dEnd = r + L, dHand = r + L * 0.78;
+  let best = 0.95, bs = Infinity;
+  for (const a of HANDLE_CANDS) {
+    const ca = Math.cos(a), sa = Math.sin(a);
+    // 手の絵は中心から約 55px（影を含む）。柄の先も手も枠の内側・ボタンの上端より上に
+    const out = outOf(x + ca * dEnd, y + sa * dEnd, 6, 12) + outOf(x + ca * dHand, y + sa * dHand, 30, 60);
+    let da = Math.abs(a - 0.95) % TAU; if (da > Math.PI) da = TAU - da;
+    const s = out * 10 + da;
+    if (s < bs) { bs = s; best = a; }
+  }
+  return best;
+}
+/** ポイの中心が動ける範囲：輪（と縁の飾り）がまるごと枠の中に収まる */
+function poiMargin() { return Math.min(Math.max(poi.r, poi.rT || 0) * 1.08 + 8, WATER.w / 2 - 1); }
+function clampPoiX(x) { const m = poiMargin(); return clamp(x, WATER.x + m, WATER.x + WATER.w - m); }
+function clampPoiY(y) { const m = poiMargin(); return clamp(y, WATER.y + m, WATER.y + WATER.h - m); }
 /** 描くときの柄の角度（時間で目標へ寄せる＝約 0.1 秒。描く回数によらない。見た目だけ） */
 function handAng() {
   const tgt = handAngFor(poi.x, poi.y, poi.r * 1.06), dt = poi.haT == null ? 1 : Math.max(0, G.realT - poi.haT);
   poi.haT = G.realT;
-  poi.ha = poi.ha == null ? tgt : poi.ha + (tgt - poi.ha) * (1 - Math.exp(-dt * 20));
+  // 近い回り方で寄せる（0 と 2π をまたぐとき大回りしない）
+  const diff = poi.ha == null ? 0 : ((tgt - poi.ha) % TAU + TAU * 1.5) % TAU - Math.PI;
+  poi.ha = poi.ha == null ? tgt : poi.ha + diff * (1 - Math.exp(-dt * 20));
   return poi.ha;
 }
 // 批評 r15：「+1,09x」が手（指）とポイの柄に隠れた。柄と手は右下（角 0.95、下の方では上向き）に伸びる
 function handHit(x, y, hw, hh) {
-  const a = poi.ha == null ? 0.95 : poi.ha, L = Math.max(90, poi.r * 1.8);
+  const a = poi.ha == null ? 0.95 : poi.ha, L = handleLen(poi.r * 1.06);
   for (const d of [poi.r + L * 0.35, poi.r + L * 0.78]) {
     const hx = poi.x + Math.cos(a) * d, hy = poi.y + Math.sin(a) * d;
     const dx = Math.max(0, Math.abs(x - hx) - hw), dy = Math.max(0, Math.abs(y - hy) - hh);
@@ -715,7 +736,7 @@ function pDown(x, y) {
   if (y >= SHOP_Y) return;
   input.down = true; poi.tx = x; poi.ty = y;
   // 押した所にポイを置く（離れた所から水の中を引きずって、知らないうちに紙が濡れないように）
-  if (poi.state === 'hover') { poi.x = clamp(x, WATER.x + 20, WATER.x + WATER.w - 20); poi.y = clamp(y, WATER.y + 20, WATER.y + WATER.h - 20); }
+  if (poi.state === 'hover') { poi.x = clampPoiX(x); poi.y = clampPoiY(y); }
 }
 function pMove(x, y) {
   input.px = x; input.py = y;
@@ -878,7 +899,9 @@ function bossCaught(f) {
     const x = WATER.x + R(0, WATER.w), y = WATER.y + 120 + R(0, WATER.h - 120), dx = x - poi.x, dy = y - poi.y, d = Math.hypot(dx, dy) + 1;
     parts.push({ k: 'drop', x, y, z: R(0, 20), vx: dx / d * R(20, 120), vy: dy / d * R(20, 120), vz: R(380, 640), s: R(3, 7), c: i % 5 ? '#dff8ff' : '#ffffff', life: 3 });
   }
-  for (let i = 0; i < 14; i++) rings.push({ x: WATER.x + R(40, WATER.w - 40), y: WATER.y + R(40, WATER.h - 40), r: R(10, 40), vr: R(220, 420), life: 0.9, t: 0, w: 7 });
+  // 批評 r17：主を捕った直後、細い大きな輪が画面じゅうに 10 本以上出た → 散らばる輪はやめ、ポイからの大きな衝撃波 1 本だけ
+  // （R() の呼び出し回数は同じに保つ＝乱数の並びを変えず、遊びの流れを変えない）
+  for (let i = 0; i < 14; i++) { R(40, WATER.w - 40); R(40, WATER.h - 40); R(10, 40); R(220, 420); }
   rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 900, life: 0.9, t: 0, w: 14 });
   SFX.boss(); SFX.boom();
 }
@@ -1059,7 +1082,7 @@ function update(dt) {
   // ポイの動き
   const prx = poi.x, pry = poi.y;
   const k = 1 - Math.exp(-dt * 28);
-  const tx = clamp(poi.tx, WATER.x + 20, WATER.x + WATER.w - 20), ty = clamp(poi.ty, WATER.y + 20, WATER.y + WATER.h - 20);
+  const tx = clampPoiX(poi.tx), ty = clampPoiY(poi.ty);
   if (!G.clear) { poi.x += (tx - poi.x) * k; poi.y += (ty - poi.y) * k; }
   // 宇宙：沈めている間、ブラックホールに引かれる
   if (V && V.on && V.gravity && poi.state === 'dip') {
@@ -1291,7 +1314,7 @@ function updateFish(dt) {
     const a = fish[i]; if (a.K.fast) continue;
     for (let j = i + 1; j < n; j++) {
       const b = fish[j]; if (b.K.fast) continue;
-      const dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy, sep = (a.r + b.r) * (a.K.school && b.K.school ? 0.75 : 1.1);
+      const dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy, sep = (a.r + b.r) * (a.K.school && b.K.school ? (a.K.draw === 'galaxy' ? GALAXY_SEP : 0.75) : 1.1);
       if (d2 < sep * sep && d2 > 0.01) {
         const d = Math.sqrt(d2), f = (sep - d) / sep * 260, wa = a.K.boss ? 0.15 : 1, wb = b.K.boss ? 0.15 : 1;
         ax[i] -= dx / d * f * wa; ay[i] -= dy / d * f * wa; ax[j] += dx / d * f * wb; ay[j] += dy / d * f * wb;
@@ -1781,14 +1804,17 @@ function drawSun(c, f, r, t) {
   c.fillStyle = 'rgba(255,120,20,0.35)'; for (let i = 0; i < 5; i++) { const a = t * 0.3 + i * 1.3; c.beginPath(); c.arc(Math.cos(a) * r * 0.3, Math.sin(a * 1.3) * r * 0.25, r * 0.08, 0, TAU); c.fill(); }
 }
 // 批評 r16：同じ大きさの渦がブドウの房のよう → 見た目だけ大きさと傾きに差をつける（当たりの大きさ f.r は同じ）
-const GALAXY_SIZE = [0.72, 1.0, 1.3, 0.85, 1.12, 0.62, 1.2];
-const GALAXY_TILT = [1, 0.55, 0.8, 0.42, 0.68, 0.9, 0.5];
+// 批評 r17：同じ大きさの渦 4〜6 個が房のように固まった → 群れの間隔を広げ（銀河だけ）、大きさの差と光の色の差を大きく
+const GALAXY_SEP = 1.15;
+const GALAXY_SIZE = [0.6, 1.0, 1.45, 0.75, 1.2, 0.52, 1.3];
+const GALAXY_TILT = [1, 0.5, 0.8, 0.38, 0.66, 0.92, 0.46];
+const GALAXY_GLOW = ['rgba(140,220,255,A)', 'rgba(255,170,220,A)', 'rgba(255,215,140,A)', 'rgba(180,160,255,A)'];
 function drawGalaxy(c, f, r, t) {
   r *= GALAXY_SIZE[f.id % GALAXY_SIZE.length];
   c.rotate(f.spin); c.scale(1, GALAXY_TILT[(f.id * 3) % GALAXY_TILT.length]);
   c.rotate(t * (0.3 + (f.id % 3) * 0.15));
   if (IMG.sp_galaxy) {
-    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.5; c.drawImage(bokehSprite('rgba(140,220,255,A)'), -r, -r, r * 2, r * 2); c.globalAlpha /= 0.5; c.globalCompositeOperation = 'source-over';
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.6; c.drawImage(bokehSprite(GALAXY_GLOW[f.id % GALAXY_GLOW.length]), -r * 1.15, -r * 1.15, r * 2.3, r * 2.3); c.globalAlpha /= 0.6; c.globalCompositeOperation = 'source-over';
     sprite(c, 'sp_galaxy', r * 0.95); return;
   }
   c.globalCompositeOperation = 'lighter';
@@ -1803,7 +1829,14 @@ function drawGalaxy(c, f, r, t) {
   c.globalCompositeOperation = 'source-over';
 }
 function drawNebula(c, f, r, t) {
-  if (IMG.sp_nebula) { c.save(); c.rotate(f.spin + t * 0.1); const s = 1 + 0.04 * Math.sin(t * 2 + f.id); sprite(c, 'sp_nebula', r * 0.85 * s); c.restore(); return; }
+  // 批評 r17：星雲が毛玉に見えた → 絵の縁を透かし（featherEdge）、光を足し合わせるガスの雲として少し大きく横長に描く
+  if (IMG.sp_nebula) {
+    c.save(); c.rotate(f.spin + t * 0.06); const s = 1 + 0.04 * Math.sin(t * 2 + f.id);
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha *= 0.45; c.drawImage(bokehSprite(f.var % 2 ? 'rgba(255,110,190,A)' : 'rgba(110,150,255,A)'), -r * 1.3, -r * 1.3, r * 2.6, r * 2.6); c.globalAlpha /= 0.45;
+    c.scale(1.12, 0.92); sprite(c, 'sp_nebula', r * 1.0 * s);
+    c.restore(); return;
+  }
   c.globalCompositeOperation = 'lighter';
   const cols = ['rgba(120,90,255,A)', 'rgba(255,90,180,A)', 'rgba(70,210,230,A)'];
   for (let i = 0; i < 4; i++) { const a = i * 1.7 + t * 0.2 + f.spin, d = r * 0.3, s = r * (1.0 + 0.2 * Math.sin(t + i)); c.globalAlpha = 0.5; c.drawImage(bokehSprite(cols[(i + f.var) % 3]), Math.cos(a) * d - s / 2, Math.sin(a) * d - s / 2, s, s); }
@@ -1828,9 +1861,11 @@ function drawCreature(c, f, x, y, ang, sc, alpha) {
       const hr = r * 0.74;
       c.save(); c.rotate(-ang); c.globalCompositeOperation = 'lighter';
       c.globalAlpha = alpha * 0.55; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -hr * 1.3, -hr * 1.3, hr * 2.6, hr * 2.6);
-      c.globalAlpha = alpha; c.strokeStyle = `rgba(255,225,120,${0.75 + 0.2 * Math.sin(t * 4)})`; c.lineWidth = 5;
-      c.beginPath(); c.arc(0, 0, hr, 0, TAU); c.stroke();
-      c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.arc(0, 0, hr * 0.86, t, t + TAU); c.stroke(); c.setLineDash([]);
+      // 光の輪は 1 本だけ。今の紙で持てないときは赤い破線、持てるときは金色に脈打つ（批評 r17：輪が 3 重に見えた）
+      const heavy = !f.isKin && fish.includes(f) && tooHeavy(f);
+      c.globalAlpha = alpha;
+      if (heavy) { c.globalCompositeOperation = 'source-over'; c.strokeStyle = `rgba(255,80,60,${0.7 + 0.2 * Math.sin(t * 5)})`; c.lineWidth = 5; c.setLineDash([16, 10]); c.beginPath(); c.arc(0, 0, hr, t * 0.5, t * 0.5 + TAU); c.stroke(); c.setLineDash([]); }
+      else if (!(fish.includes(f) && (poi.onBoss || tooBig(f)))) { c.strokeStyle = `rgba(255,225,120,${0.75 + 0.25 * Math.sin(t * 6)})`; c.lineWidth = 6; c.beginPath(); c.arc(0, 0, hr, 0, TAU); c.stroke(); }
       c.globalCompositeOperation = 'source-over'; c.restore();
       // 批評 r11：魚が画面幅の 10% しかなかった。輪いっぱいに描く（画面幅の 25% 以上）
       drawGoldfish(c, f, r * 0.68, sw, sw2, 'kin');
@@ -1979,18 +2014,20 @@ function drawPaper(c, x, y, r, alphaMul) {
 }
 // ポイの縁の外に、紙の残り（濡れると減る）を輪で出す。速く動かすと目に見えて減る
 function drawWetGauge(c, x, y, r) {
-  const df = clamp(1 - poi.wet, 0, 1), R2 = r + 24;
-  const col = df > 0.5 ? '#5ee07a' : df > 0.25 ? '#ffd23a' : '#ff4a3a';
+  // 批評 r17：ポイの外にもう 1 本の輪（紙の残り）があると、主の輪と重なって 3 重に見えた → 残りはポイの縁の上に細く描く（輪は 1 本）
+  const df = clamp(1 - poi.wet, 0, 1), R2 = r;
+  const col = df > 0.5 ? '#7dffa0' : df > 0.25 ? '#ffd23a' : '#ffe0d0';
   c.lineCap = 'round';
-  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 8; c.beginPath(); c.arc(x, y, R2, 0, TAU); c.stroke();
-  c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); c.arc(x, y, R2, -Math.PI / 2, -Math.PI / 2 + df * TAU); c.stroke();
+  c.strokeStyle = col; c.lineWidth = Math.max(3, r * 0.04); c.beginPath(); c.arc(x, y, R2, -Math.PI / 2, -Math.PI / 2 + df * TAU); c.stroke();
   // 速く動かしているときは、しずくの印が縁から落ちる
   if (poi.speed > 300) { c.fillStyle = '#bff4ff'; for (let k = 0; k < 3; k++) { const a = G.realT * 5 + k * 2.1; c.beginPath(); c.arc(x + Math.cos(a) * R2, y + Math.sin(a) * R2, 5, 0, TAU); c.fill(); } }
   c.lineCap = 'butt';
 }
+// キンちゃんに重なって捕れるときのポイの縁の色
+const POI_GOLD = '#ffcf3a';
 function drawRing(c, x, y, r, alpha, rim) {
   c.globalAlpha = alpha;
-  const a = poi.ha == null ? 0.95 : poi.ha, hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r, L = Math.max(90, r * 1.7);
+  const a = poi.ha == null ? 0.95 : poi.ha, hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r, L = handleLen(r);
   c.save(); c.translate(hx, hy); c.rotate(a);
   c.fillStyle = '#c9201c'; rr(c, -4, -r * 0.07 - 3, L, r * 0.14 + 6, 6); c.fill();
   c.fillStyle = 'rgba(255,170,160,0.6)'; c.fillRect(2, -r * 0.05 - 1, L - 12, 3);
@@ -2153,12 +2190,19 @@ function renderScene(c, hud) {
     sg.addColorStop(0, 'rgba(2,0,12,0)'); sg.addColorStop(1, `rgba(2,0,12,${0.5 * boss.spawn})`);
     c.fillStyle = sg; c.fillRect(WATER.x, WATER.y, WATER.w, WATER.h);
   }
+  // 批評 r17：ポイがキンちゃんに重なると、光の輪とポイの輪が 2 重になる → 重なっている間は光の輪を消し、ポイの縁を金色に光らせる（輪は 1 本）
+  poi.onBoss = !!(boss && boss.K.halo && boss.spawn >= 1 && poi.state !== 'torn' && Math.hypot(boss.x - poi.x, boss.y - poi.y) < poi.r * 0.9 && !tooHeavy(boss));
   if (boss) drawCreature(c, boss, boss.x, boss.y, boss.ang, boss.spawn, boss.spawn);
   // 重すぎる獲物には赤い輪（今の紙では持てない）。持てるようになった瞬間は金色に光る
   for (const f of fish) {
     if (f.spawn < 1) continue;
-    const heavy = tooHeavy(f), rr2 = f.r * (f.K.draw === 'planet' || f.K.draw === 'sun' ? 0.7 : 0.62);
-    if (heavy) {
+    const heavy = tooHeavy(f), halo = !!f.K.halo, rr2 = halo ? f.r * 0.74 - 8 : f.r * (f.K.draw === 'planet' || f.K.draw === 'sun' ? 0.7 : 0.62);
+    // 批評 r17：キンちゃんは光の輪をまとっているので、重すぎの赤い輪・主の黄の輪は重ねない（光の輪の色で見せる＝drawCreature）
+    if (heavy && halo) {
+      const wx = f.x + rr2 * 0.7, wy = f.y - rr2 * 0.7;
+      c.fillStyle = 'rgba(30,10,10,0.8)'; c.beginPath(); c.moveTo(wx - 9, wy + 9); c.lineTo(wx + 9, wy + 9); c.lineTo(wx + 6, wy - 4); c.lineTo(wx - 6, wy - 4); c.closePath(); c.fill();
+      c.strokeStyle = '#ff6a5a'; c.lineWidth = 2.5; c.beginPath(); c.arc(wx, wy - 7, 4, 0, TAU); c.stroke();
+    } else if (heavy) {
       c.strokeStyle = `rgba(255,60,50,${0.55 + 0.25 * Math.sin(t * 5 + f.id)})`; c.lineWidth = 4; c.setLineDash([12, 8]);
       c.beginPath(); c.arc(f.x, f.y, rr2 + 8, t * 0.5, t * 0.5 + TAU); c.stroke(); c.setLineDash([]);
       // 錘の印
@@ -2173,7 +2217,7 @@ function renderScene(c, hud) {
       c.beginPath(); c.arc(f.x, f.y, ro, -t * 0.4, -t * 0.4 + TAU); c.stroke(); c.setLineDash([]);
       for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.6, x0 = f.x + Math.cos(a) * ro, y0 = f.y + Math.sin(a) * ro, x1 = f.x + Math.cos(a) * (ro + 18), y1 = f.y + Math.sin(a) * (ro + 18);
         c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.moveTo(x1 + Math.cos(a + 2.5) * 8, y1 + Math.sin(a + 2.5) * 8); c.lineTo(x1, y1); c.lineTo(x1 + Math.cos(a - 2.5) * 8, y1 + Math.sin(a - 2.5) * 8); c.stroke(); }
-    } else if (f.K.boss && !heavy) {
+    } else if (f.K.boss && !heavy && !halo) {
       c.strokeStyle = `rgba(255,225,80,${0.55 + 0.3 * Math.sin(t * 6)})`; c.lineWidth = 5;
       c.beginPath(); c.arc(f.x, f.y, rr2 + 10, 0, TAU); c.stroke();
     }
@@ -2202,7 +2246,13 @@ function renderScene(c, hud) {
   handAng();
   let px = poi.x, py = poi.y, pr = poi.r;
   if (poi.state === 'enter') { const u = easeOut(poi.enterT); px = lerp(W + 120, poi.x, u); py = lerp(H - 200, poi.y, u); }
-  const rim = poi.over > 0 ? `rgb(${Math.round(lerp(214, 255, poi.over))},${Math.round(lerp(38, 30, poi.over))},${Math.round(lerp(31, 30, poi.over))})` : null;
+  else if (hud && poi.state !== 'snap' && poi.state !== 'torn' && !G.clear) {
+    // 確かめ用：ポイの輪が枠の外に出たら 1 回ごとに記録（批評 r17）
+    const out = Math.min(px - pr - WATER.x, WATER.x + WATER.w - px - pr, py - pr - WATER.y, WATER.y + WATER.h - py - pr) < -6;
+    if (out && !poi.ringOut) ev('poi_out', { what: 'ring', x: Math.round(px), y: Math.round(py), r: Math.round(pr) });
+    poi.ringOut = out;
+  }
+  let rim = poi.over > 0 ? `rgb(${Math.round(lerp(214, 255, poi.over))},${Math.round(lerp(38, 30, poi.over))},${Math.round(lerp(31, 30, poi.over))})` : null;
   if (poi.state === 'torn') {
     const u = clamp(poi.tearT / 0.6, 0, 1);
     drawRing(c, px + u * 30, py + u * 50, pr * (1 - u * 0.1), 1 - u);
@@ -2211,8 +2261,8 @@ function renderScene(c, hud) {
     const st = poi.strain || 0;
     if (st > 0) {
       px += Math.sin(G.realT * 70) * 3 * st; py += Math.cos(G.realT * 63) * 2 * st;
-      c.strokeStyle = `rgba(255,${Math.round(lerp(210, 60, st))},40,${0.55 + 0.35 * st})`; c.lineWidth = 6 + 6 * st;
-      c.beginPath(); c.arc(px, py, pr + 10, 0, TAU); c.stroke();
+      // 批評 r17：外にもう 1 本の輪を足すと主の輪と重なる → ポイの縁そのものを黄→橙に光らせる
+      if (!rim) rim = `rgb(255,${Math.round(lerp(200, 90, st))},${Math.round(lerp(60, 30, st))})`;
       c.strokeStyle = `rgba(120,20,10,${0.35 + 0.5 * st})`; c.lineCap = 'round';
       for (let i = 0; i < poi.cracks.length && i < 1 + st * 5; i++) {
         const pts = poi.cracks[i]; c.lineWidth = 3;
@@ -2223,7 +2273,9 @@ function renderScene(c, hud) {
     }
     // 批評 r17 前の採点：沈めたポイのまわりに輪が 3〜4 重で散らかる → 白い揺れの輪はやめる（紙の残りの輪で足りる）
     // 重すぎると縁が赤く脈打つ（このまま上げると破れる）
-    if (poi.over > 0) { c.strokeStyle = `rgba(255,50,40,${poi.over * (0.5 + 0.5 * Math.sin(G.realT * 30))})`; c.lineWidth = 10; c.beginPath(); c.arc(px, py, pr + 14, 0, TAU); c.stroke(); }
+    // 批評 r17：これも外に輪を足さず、縁の上で太く脈打たせる
+    if (poi.over > 0) { c.strokeStyle = `rgba(255,50,40,${poi.over * (0.5 + 0.5 * Math.sin(G.realT * 30))})`; c.lineWidth = Math.max(14, pr * 0.16); c.beginPath(); c.arc(px, py, pr, 0, TAU); c.stroke(); }
+    if (!rim && poi.onBoss) rim = POI_GOLD;
     if (poi.heat > 0.05) { c.strokeStyle = `rgba(255,150,40,${poi.heat * 0.7})`; c.lineWidth = 8; c.beginPath(); c.arc(px, py, pr + 4, 0, TAU); c.stroke(); }
     drawRing(c, px, py, pr, 1, rim);
     drawWetGauge(c, px, py, pr);
@@ -2236,7 +2288,7 @@ function renderScene(c, hud) {
     const overBoss = boss && Math.hypot(boss.x - px, boss.y - py) < pr + boss.r * 0.6 ? 0.45 : 1;
     drawPaper(c, px, py, pr * lift, (pr > 120 ? lerp(0.85, 0.5, clamp((pr - 120) / 120, 0, 1)) : 1) * overBoss);
     if (k > 0) { const g = c.createRadialGradient(px, py, 0, px, py, pr * 0.9); g.addColorStop(0, `rgba(30,80,120,${0.35 * k})`); g.addColorStop(1, 'rgba(30,80,120,0)'); c.fillStyle = g; c.beginPath(); c.arc(px, py, pr * 0.95, 0, TAU); c.fill(); }
-    drawRing(c, px, py, pr * lift, 1);
+    drawRing(c, px, py, pr * lift, 1, poi.onBoss ? POI_GOLD : null);
     if (poi.glow > 0) { c.globalAlpha = poi.glow; c.lineWidth = 14; c.strokeStyle = '#fff6a0'; c.beginPath(); c.arc(px, py, pr * lift + 4, 0, TAU); c.stroke(); c.globalAlpha = 1; }
     c.restore();
   }
@@ -2345,15 +2397,26 @@ function drawHandAt(c, x, y, rot, s) {
 }
 function drawHand(c) {
   const inShop = (input.away || input.py >= SHOP_Y) && poi.state !== 'dip';
-  if (inShop) { drawHandAt(c, input.px + 18, input.py + 34, -0.35, taps.some(t => t.t < 0.15) ? 0.9 : 1); return; }
+  if (inShop) {
+    // 批評 r17：買い物の指がボタンの文字（「→ 鯨が持てる」）を隠した → ボタンの上では右の端の絵の横を押す
+    const bi = shopHit(input.px, input.py), b = bi >= 0 ? btnRect(bi) : null;
+    const hx = b ? b.x + b.w - 30 : input.px + 18, hy = b ? b.y + 62 : input.py + 34;
+    drawHandAt(c, hx, hy, -0.2, (taps.some(t => t.t < 0.15) ? 0.9 : 1) * (b ? 0.8 : 1)); return;
+  }
   if (poi.state === 'torn' || poi.state === 'enter' || G.clear) return;
-  const lift = poi.state === 'dip' ? 1 : 1.06, a = poi.ha == null ? 0.95 : poi.ha, L = Math.max(90, poi.r * lift * 1.7);
-  const hy = poi.y + Math.sin(a) * (poi.r * lift + L * 0.78);
-  // 確かめ用：手がボタンの上端（SHOP_Y+8）にかかったら 1 回ごとに記録
+  const lift = poi.state === 'dip' ? 1 : 1.06, a = poi.ha == null ? 0.95 : poi.ha, L = handleLen(poi.r * lift);
+  const hx = poi.x + Math.cos(a) * (poi.r * lift + L * 0.78), hy = poi.y + Math.sin(a) * (poi.r * lift + L * 0.78);
+  // 確かめ用：手がボタンの上端（SHOP_Y+8）にかかったら 1 回ごとに記録。柄の先か手が枠の外に出たら poi_out
   const over = hy + 55 > SHOP_Y + 8;
   if (over && !poi.handOver) ev('hand_over', { y: Math.round(hy) });
   poi.handOver = over;
-  drawHandAt(c, poi.x + Math.cos(a) * (poi.r * lift + L * 0.78), hy, a - Math.PI / 2 - 0.5, 1);
+  const ex = poi.x + Math.cos(a) * (poi.r * lift + L), ey = poi.y + Math.sin(a) * (poi.r * lift + L);
+  const out = outOf(ex, ey, 0, 0) > 4 || outOf(hx, hy, 12, 0) > 4;
+  if (out && !poi.handOut) ev('poi_out', { what: 'hand', x: Math.round(hx), y: Math.round(hy) });
+  poi.handOut = out;
+  // 柄が左向きのときは手を左右反転（親指が上に来るように）
+  if (Math.cos(a) < 0) { c.save(); c.translate(hx, 0); c.scale(-1, 1); drawHandAt(c, 0, hy, Math.PI - a - Math.PI / 2 - 0.5, 1); c.restore(); }
+  else drawHandAt(c, hx, hy, a - Math.PI / 2 - 0.5, 1);
 }
 
 function coinIcon(c, x, y, r) {
