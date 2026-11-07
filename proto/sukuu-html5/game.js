@@ -546,14 +546,14 @@ const press = [0, 0, 0], deny = [0, 0, 0], boughtFx = [0, 0, 0];
 const lvOf = i => G.lv[UPG[i].id];
 // 後の世界ほど少し高い（星・宇宙を駆け抜けて終わらないように）
 // 第8回：人の速さで各段 55〜70 秒・最後の段に 4 分過ぎに着くよう合わせた（sukuu_check.py sim --human seed 1〜3）
-const WORLD_PRICE = [1.7, 2.4, 1.8, 2.4, 3.2];
+const WORLD_PRICE = [3.1, 2.2, 1.8, 2.6, 3.3];
 const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
 const omake = () => clamp(1 - (G.wt - OMAKE_T) * 0.025, 0.4, 1);
 // 段ごとの主役の強化（安い）：池＝厚さ／海＝大きさ／大陸＝速乾／星＝厚さと速乾／宇宙＝大きさ。並びは [厚さ, 大きさ, 速乾]
 // 二晩目からは係数の並びを 1 つずつずらす（同じ買い方にならない）
-const UPF = [[1, 1.3, 1.3], [1.35, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
+const UPF = [[1, 1.3, 1.3], [1.1, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
 const upf = i => UPF[G.k][(i + G.ng) % 3];
 // はじめての買い物は半額（一晩目の池だけ）
 const firstOff = () => (!G.firstBuy && G.ng === 0 && G.k === 0 ? 0.3 : 1);
@@ -801,7 +801,7 @@ function update(dt) {
     poi.dipT += sdt; poi.sink = Math.min(1, poi.sink + sdt / 0.12);
     const heatMul = 1 + poi.heat * 6, vMul = V && V.on && Math.hypot(V.x - poi.x, V.y - poi.y) < V.R ? 1.6 : 1;
     // 大きいポイほど紙の面が広く、早く濡れる（大きさと引き換え）
-    poi.wet += (0.3 + poi.speed * 0.00045) * dryOf(G.lv.d) * heatMul * vMul * (1 + 0.1 * G.lv.s) * sdt;
+    poi.wet += ((beginner() ? 0.15 : 0.3) + poi.speed * 0.00045) * dryOf(G.lv.d) * heatMul * vMul * (1 + 0.1 * G.lv.s) * sdt;
     if (poi.heat > 0) poi.burn = Math.min(1, poi.burn + poi.heat * sdt * 0.8);
     if (poi.speed > 300 && frng() < 0.4) rings.push({ x: poi.x + R(-poi.r, poi.r), y: poi.y + R(-poi.r, poi.r), r: 4, vr: 90, life: 0.5, t: 0, w: 2 });
     const inside = fish.filter(f => f.spawn >= 1 && insidePoi(f));
@@ -1010,7 +1010,9 @@ function updateFish(dt) {
       }
     }
     f.vx += fx * dt; f.vy += fy * dt;
-    const sp = Math.hypot(f.vx, f.vy) || 1, mx = K.spd * (1 + f.flee * 1.8) * (f.danger ? 1.6 : 1), mn = K.spd * 0.3;
+    // はじめての人：沈めたポイの上にいる金魚は、紙の上でゆっくりになる（見たとおりにすくえる）
+    const rest = dip && f.inDip && beginner() && insidePoi(f);
+    const sp = Math.hypot(f.vx, f.vy) || 1, mx = K.spd * (rest ? 0.2 : (1 + f.flee * 1.8) * (f.danger ? 1.6 : 1)), mn = K.spd * (rest ? 0.05 : 0.3);
     if (sp > mx) { f.vx *= mx / sp; f.vy *= mx / sp; } else if (sp < mn) { f.vx *= mn / sp; f.vy *= mn / sp; }
     f.x += f.vx * dt; f.y += f.vy * dt;
     f.x = clamp(f.x, B.x0 + f.r * 0.5, B.x1 - f.r * 0.5); f.y = clamp(f.y, B.y0 + f.r * 0.5, B.y1 - f.r * 0.5);
