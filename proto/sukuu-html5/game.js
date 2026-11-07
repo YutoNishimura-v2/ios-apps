@@ -537,7 +537,7 @@ function addShake(m) { G.shake = Math.max(G.shake, m); }
 
 // ---------------------------------------------------------------- 入力
 const input = { down: false, px: W / 2, py: 640, away: false };
-function btnRect(i) { return { x: 14 + i * 234, y: SHOP_Y + 8, w: 224, h: 180 }; }
+function btnRect(i) { return { x: 14 + i * 234, y: SHOP_Y + 6, w: 224, h: 172 }; }
 function shopHit(x, y) { for (let i = 0; i < 3; i++) { const b = btnRect(i); if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return i; } return -1; }
 const busy = () => G.clear || G.trans || G.ending;
 function pDown(x, y) {
@@ -1802,6 +1802,42 @@ function drawHUD(c) {
   c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,0.5)'; rr(c, bx + shk, by, bw, bh, 11); c.stroke();
   text(c, '紙', bx - 18, by + bh / 2, 24, '#ffffff', '#000', 5);
 }
+// 店のボタンの板：縁日の屋台の札のような、金の縁と厚みのある立体の板。
+// 買えるときは中がクリーム色に光り、買えないときは夜の紺で、たまった分だけ金色が下から満ちる。
+const PLATE = {
+  rimTop: '#ffd54a', rimBot: '#e07a00', lip: '#8a3f00',
+  faceTop: '#ffef9a', faceBot: '#ffb21e',
+  nightTop: '#2c2f5c', nightBot: '#171936', nightRim: '#b88a2e', nightLip: '#0b0c20',
+};
+function drawShopPlate(c, x, y, w, h, lit, fill) {
+  const R = 24, IN = 6, LIP = 9;
+  c.fillStyle = 'rgba(0,0,0,0.45)'; rr(c, x + 2, y + LIP + 6, w, h, R); c.fill();
+  c.fillStyle = lit ? PLATE.lip : PLATE.nightLip; rr(c, x, y + LIP, w, h, R); c.fill();
+  let g = c.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, lit ? PLATE.rimTop : PLATE.nightRim); g.addColorStop(1, lit ? PLATE.rimBot : '#6a4c18');
+  c.fillStyle = g; rr(c, x, y, w, h, R); c.fill();
+  const fx = x + IN, fy = y + IN, fw = w - IN * 2, fh = h - IN * 2;
+  g = c.createLinearGradient(0, fy, 0, fy + fh);
+  g.addColorStop(0, lit ? PLATE.faceTop : PLATE.nightTop); g.addColorStop(1, lit ? PLATE.faceBot : PLATE.nightBot);
+  c.fillStyle = g; rr(c, fx, fy, fw, fh, R - IN); c.fill();
+  if (!lit && fill > 0) {
+    c.save(); rr(c, fx, fy, fw, fh, R - IN); c.clip();
+    const top = fy + fh * (1 - fill);
+    // たまった分だけ、買えるときの金色が下から満ちる
+    g = c.createLinearGradient(0, fy, 0, fy + fh);
+    g.addColorStop(0, 'rgba(255,214,90,0.7)'); g.addColorStop(1, 'rgba(255,170,30,0.9)');
+    c.fillStyle = g; c.fillRect(fx, top, fw, fh * fill);
+    c.fillStyle = '#ffe58a'; c.fillRect(fx, top - 1.5, fw, 3);
+    c.restore();
+  }
+  // 上半分のつや
+  c.save(); rr(c, fx, fy, fw, fh, R - IN); c.clip();
+  g = c.createLinearGradient(0, fy, 0, fy + fh * 0.45);
+  g.addColorStop(0, lit ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = g; rr(c, fx + 4, fy + 3, fw - 8, fh * 0.45, R - IN - 2); c.fill();
+  c.restore();
+  c.lineWidth = 2; c.strokeStyle = lit ? 'rgba(255,255,240,0.9)' : 'rgba(255,220,140,0.35)'; rr(c, x + 1, y + 1, w - 2, h - 2, R - 1); c.stroke();
+}
 function drawShop(c) {
   const nu = nextUnlock(), nf = nextFit();
   for (let i = 0; i < 3; i++) {
@@ -1810,20 +1846,12 @@ function drawShop(c) {
     const dshk = deny[i] > 0 ? Math.sin(deny[i] * 60) * 6 : 0;
     c.save(); c.translate(b.x + b.w / 2 + dshk, b.y + b.h / 2); c.scale(ps, ps);
     const x = -b.w / 2, y = -b.h / 2;
-    c.fillStyle = 'rgba(0,0,0,0.5)'; rr(c, x + 3, y + 7, b.w, b.h, 26); c.fill();
-    let g = c.createLinearGradient(0, y, 0, y + b.h);
-    if (can && !maxed) { g.addColorStop(0, '#ffe066'); g.addColorStop(1, '#ff8a1f'); } else { g.addColorStop(0, '#2a3358'); g.addColorStop(1, '#161b33'); }
-    c.fillStyle = g; rr(c, x, y, b.w, b.h, 26); c.fill();
-    if (!can && !maxed) {
-      const f = clamp(G.coins / p, 0, 1);
-      c.save(); rr(c, x, y, b.w, b.h, 26); c.clip(); c.fillStyle = 'rgba(70,150,255,0.35)'; c.fillRect(x, y + b.h * (1 - f), b.w, b.h * f);
-      c.fillStyle = '#7fc4ff'; c.fillRect(x, y + b.h * (1 - f) - 2, b.w, 4); c.restore();
-    }
-    c.lineWidth = 4; c.strokeStyle = can && !maxed ? '#fff8d0' : 'rgba(255,255,255,0.18)'; rr(c, x, y, b.w, b.h, 26); c.stroke();
-    const ix = 0, iy = y + 50, ink = can && !maxed ? '#7a2a00' : '#ffd23a';
+    drawShopPlate(c, x, y, b.w, b.h, can && !maxed, maxed ? 1 : clamp(G.coins / p, 0, 1));
+    const ix = 0, iy = y + 46, ink = can && !maxed ? '#7a2a00' : '#ffd23a';
     if (i === 0) {
       // 紙の厚さ：重ねた紙と錘
-      c.fillStyle = '#fafaf5'; for (let k = 2; k >= 0; k--) { c.globalAlpha = 1 - k * 0.25; c.beginPath(); c.ellipse(ix - 8 + k * 4, iy + 6 - k * 6, 26, 12, 0, 0, TAU); c.fill(); }
+      c.fillStyle = '#fafaf5'; c.strokeStyle = 'rgba(150,100,40,0.7)'; c.lineWidth = 2;
+      for (let k = 2; k >= 0; k--) { c.globalAlpha = 1 - k * 0.25; c.beginPath(); c.ellipse(ix - 8 + k * 4, iy + 6 - k * 6, 26, 12, 0, 0, TAU); c.fill(); c.stroke(); }
       c.globalAlpha = 1; c.fillStyle = ink; c.beginPath(); c.moveTo(ix + 14, iy + 12); c.lineTo(ix + 40, iy + 12); c.lineTo(ix + 35, iy - 8); c.lineTo(ix + 19, iy - 8); c.closePath(); c.fill();
       c.strokeStyle = ink; c.lineWidth = 3; c.beginPath(); c.arc(ix + 27, iy - 13, 5, 0, TAU); c.stroke();
     } else if (i === 1) {
@@ -1837,16 +1865,16 @@ function drawShop(c) {
       for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(ix + 6, iy - 14 + k * 13); c.quadraticCurveTo(ix + 26, iy - 20 + k * 13, ix + 38, iy - 10 + k * 13); c.stroke(); }
     }
     const tc = can && !maxed ? '#3a1404' : '#ffffff';
-    text(c, UPG[i].name, 0, y + 102, 26, tc, null, 0);
+    text(c, UPG[i].name, 0, y + 96, 26, tc, can && !maxed ? null : '#1a1030', 5);
     // 下の行：何が変わるか
     let sub = maxed ? '最大' : 'Lv ' + (lvOf(i) + 1);
     if (!maxed && i === 0 && nu) sub = '→ ' + nu.name + 'が持てる';
     if (!maxed && i === 1 && nf) sub = '→ ' + nf.name + 'が入る';
-    text(c, sub, 0, y + 130, sub.length > 7 ? 18 : 20, can && !maxed ? '#7a3a10' : ((i === 0 && nu) || (i === 1 && nf) ? '#ffd27a' : '#a8b4e0'), null, 0, 'center', '800');
+    text(c, sub, 0, y + 123, sub.length > 7 ? 18 : 20, can && !maxed ? '#7a3a10' : ((i === 0 && nu) || (i === 1 && nf) ? '#ffd27a' : '#c8cff0'), can && !maxed ? null : '#1a1030', 4, 'center', '800');
     if (!maxed) {
-      const ps2 = fmt(p); c.font = '900 30px ' + FONT; const w = c.measureText(ps2).width;
-      coinIcon(c, -w / 2 - 14, y + 160, 12);
-      text(c, ps2, 8, y + 161, 30, deny[i] > 0 ? '#ff4a3a' : can ? '#ffffff' : '#ffd23a', can ? '#7a2a00' : '#000', 6);
+      const ps2 = fmt(p); c.font = '900 32px ' + FONT; const w = c.measureText(ps2).width;
+      coinIcon(c, -w / 2 - 14, y + 150, 13);
+      text(c, ps2, 8, y + 151, 32, deny[i] > 0 ? '#ff4a3a' : can ? '#4a1e00' : '#ffd23a', can ? null : '#000', 6);
     }
     // おまけの札（値引き中）
     if (!maxed && omake() < 1) {
