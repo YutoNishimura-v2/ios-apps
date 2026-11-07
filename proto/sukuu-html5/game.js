@@ -615,7 +615,7 @@ const press = [0, 0, 0], deny = [0, 0, 0], boughtFx = [0, 0, 0];
 const lvOf = i => G.lv[UPG[i].id];
 // 後の世界ほど少し高い（星・宇宙を駆け抜けて終わらないように）
 // 第8回：人の速さで各段 55〜70 秒・最後の段に 4 分過ぎに着くよう合わせた（sukuu_check.py sim --human seed 1〜3）
-const WORLD_PRICE = [3.1, 2.2, 1.8, 2.6, 3.3];
+const WORLD_PRICE = [3.3, 2.3, 1.8, 2.6, 3.3];
 const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
@@ -714,8 +714,9 @@ const NIGHT = ['一晩目', '二晩目', '三晩目', '四晩目', '五晩目'];
 // 二晩目からは、前の晩に救った分のご縁で値段が上がる（×2、×3 …）
 const ngMul = () => 1 + 0.5 * G.ng;
 // 二晩目からは値段も少し上がる（お守りの分だけ速くなりすぎないように。批評 r9：2 周目の海が 27 秒）
-const NG_PRICE = 0.35;
-const ngPrice = () => 1 + NG_PRICE * G.ng;
+const NG_PRICE = 0.45;
+// 宇宙は前の段の残りのお金ですぐ買えてしまうので、二晩目からは 2 倍上げる
+const ngPrice = () => 1 + NG_PRICE * G.ng * (G.k === 4 ? 2 : 1);
 function bossCaught(f) {
   ev('boss_catch', { kind: f.K.id });
   G.clear = { t: 0 };
@@ -779,7 +780,9 @@ function lift() {
   poi.wet = Math.min(0.95, poi.wet + 0.08);
   poi.dripT = 0.8;
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
-  const n = caught.length, m = mult(n) * (1 + ease()) * (n >= 4 ? 1 + perkN('bell') : 1);
+  // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜110 秒で 1→2 倍）値段が上がる＝追いつける
+  const catchUp = G.ng === 0 && G.k === 0 ? 1 + clamp((G.wt - 50) / 60, 0, 1) : 1;
+  const n = caught.length, m = mult(n) * (beginner() ? 2 : catchUp) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);
   caught.forEach((f, i) => {
