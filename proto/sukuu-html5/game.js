@@ -202,7 +202,7 @@ for (const [k, ext, world] of ART) {
   im.src = 'assets/' + k + '.' + ext;
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
-for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body']) {
+for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body']) {
   const im = new Image();
   im.onload = () => { IMG[k] = im; };
   im.src = 'assets/' + k + '.png';
@@ -1416,21 +1416,26 @@ function finTail(c, r, sw, sw2, tcol, tl) {
   }
   c.restore();
 }
+// 体の絵（読めないときはコードの絵）。出目金はコードのまま
+const bodyArt = kind => (kind === 'kin' ? IMG.kin_body : kind === 'kingyo' ? IMG.kingyo_body : null);
 function drawGoldfish(c, f, r, sw, sw2, kind) {
   const deme = kind === 'demekin', kin = kind === 'kin', black = deme && f.var < 2;
   const col = kin ? '#ffb21a' : deme ? (black ? '#1c1c2a' : '#ff3a1e') : KINGYO_COLS[f.var % 4][0];
   const tcol = kin ? 'rgba(255,175,50,0.82)' : deme ? (black ? 'rgba(60,60,110,0.75)' : 'rgba(255,120,90,0.75)') : KINGYO_COLS[f.var % 4][1];
-  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : kin && IMG.kin_body ? 0.85 : 1.0);
+  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : kin && bodyArt(kind) ? 0.85 : 1.1);
   c.fillStyle = tcol;
   for (const s of [-1, 1]) { c.save(); c.translate(0.22 * r, s * 0.3 * r); c.rotate(s * (0.9 + sw * 0.35)); c.beginPath(); c.ellipse(-0.1 * r, 0, 0.2 * r, 0.08 * r, 0, 0, TAU); c.fill(); c.restore(); }
-  if (kin && IMG.kin_body) {
-    // 批評 r11：キンちゃんの体が「丸に点 2 つ」に見えた。体は gpt-image の絵（尾・ひれはコードで動かす）。
+  const bodyImg = bodyArt(kind);
+  if (bodyImg) {
+    // 批評 r11：キンちゃん・金魚の体が「丸に点 2 つ」に見えた。体は gpt-image の絵（尾・ひれはコードで動かす）。
     // 白い模様（地球の大陸と同じ並び）は絵の上に重ねる
-    c.drawImage(IMG.kin_body, -0.72 * r, -0.58 * r, 1.73 * r, 1.155 * r);
-    c.save(); c.beginPath(); c.ellipse(0.06 * r, 0, 0.72 * r, 0.4 * r, 0, 0, TAU); c.clip();
-    c.globalAlpha *= 0.5; c.fillStyle = 'rgba(255,250,225,1)';
-    for (const p of KIN_PATCH) { c.beginPath(); c.ellipse(p[0] * r * 1.6, p[1] * r * 1.2, p[2] * r * 1.5, p[2] * r * 1.1, 0.4, 0, TAU); c.fill(); }
-    c.restore();
+    c.drawImage(bodyImg, -0.72 * r, -0.58 * r, 1.73 * r, 1.155 * r);
+    if ((f.var === 3 && kind === 'kingyo') || kin || f.isKin) {
+      c.save(); c.beginPath(); c.ellipse(0.06 * r, 0, 0.72 * r, 0.4 * r, 0, 0, TAU); c.clip();
+      c.globalAlpha *= kin ? 0.5 : 0.8; c.fillStyle = 'rgba(255,250,225,1)';
+      for (const p of KIN_PATCH) { c.beginPath(); c.ellipse(p[0] * r * 1.6, p[1] * r * 1.2, p[2] * r * 1.5, p[2] * r * 1.1, 0.4, 0, TAU); c.fill(); }
+      c.restore();
+    }
     return;
   }
   c.fillStyle = col; c.beginPath(); c.ellipse(0.06 * r, 0, 0.58 * r, deme ? 0.4 * r : 0.35 * r, 0, 0, TAU); c.fill();
