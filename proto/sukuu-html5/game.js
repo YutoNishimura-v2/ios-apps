@@ -202,9 +202,18 @@ for (const [k, ext, world] of ART) {
   im.src = 'assets/' + k + '.' + ext;
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
+// 1024〜1536px の絵を毎コマ縮めて描くと重い（hand で実時間 180 秒がゲーム 146 秒に）。読んだときに一度だけ縮める
+const SPRITE_MAX = { kingyo_body: 192, sp_whale: 512, kin_body: 512 };
+function shrinkImage(im, maxSide) {
+  const s = Math.min(1, maxSide / Math.max(im.width, im.height));
+  if (s >= 1) return im;
+  const cv = document.createElement('canvas'); cv.width = Math.round(im.width * s); cv.height = Math.round(im.height * s);
+  const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
+  return cv;
+}
 for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body']) {
   const im = new Image();
-  im.onload = () => { IMG[k] = im; };
+  im.onload = () => { IMG[k] = shrinkImage(im, SPRITE_MAX[k] || 384); };
   im.src = 'assets/' + k + '.png';
 }
 const ISLAND_ART = { island: 'isl_small', volcano: 'isl_volcano', bigisland: 'isl_big', continent: 'isl_continent' };
@@ -851,7 +860,8 @@ function lift() {
   // 批評 r11：12 すくい目で 2 倍が急に切れ、30〜60 秒の稼ぎが 46→19 に落ちた。
   // 2 倍はその後の 25 すくいで少しずつ 1 倍へ（すくいの数で減るので、速い人にはすぐ切れる）
   const firstPond = G.ng === 0 && G.k === 0;
-  const catchUp = firstPond ? 1 + 0.04 * Math.max(0, G.wt - 50) : 1;
+  // 池に長くいる人ほど値段が上がる。30 秒から 1 秒 +3%（批評 r11：30〜60 秒の谷）
+  const catchUp = firstPond ? 1 + 0.03 * Math.max(0, G.wt - 30) : 1;
   const tail = firstPond ? clamp(2 - (G.scoops - 12) / 25, 1, 2) : 1;
   const n = caught.length, m = mult(n) * Math.max(catchUp, tail) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
