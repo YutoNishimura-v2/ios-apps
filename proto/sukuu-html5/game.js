@@ -655,7 +655,8 @@ const OMAKE_T = 40;
 // 一晩目の池は、最後の買い物から 15 秒たつと 1 秒 4% ずつ下がる（最低 3 割。批評 r10：初心者の買い物の間が 50 秒空いた）
 // 批評 r11：買い物の間が 33〜43 秒空いた（たまにしかボタンを押さない人は、どれでも買える値段まで待つ）。
 // 6 秒から 1 秒 10% 値下げ、最低 1 割 5 分（14.5 秒でどれも底値）
-const buyAssist = () => (G.ng === 0 && G.k === 0 ? clamp(1 - (G.wt - (G.lastBuyT || 0) - 6) * 0.1, 0.15, 1) : 1);
+// 第13回：池を 90 秒以上かけて抜けた人（G.slow）は、一晩目の海から先も同じ値下げ（初心者が海で 41 秒買えなかった）
+const buyAssist = () => (G.ng === 0 && (G.k === 0 || G.slow) ? clamp(1 - (G.wt - (G.lastBuyT || 0) - 6) * 0.1, 0.15, 1) : 1);
 const omake = () => Math.min(buyAssist(), clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0.4, 1));
 // 段ごとの主役の強化（安い）：池＝厚さ／海＝大きさ／大陸＝速乾／星＝厚さと速乾／宇宙＝大きさ。並びは [厚さ, 大きさ, 速乾]
 // 二晩目からは係数の並びを 1 つずつずらす（同じ買い方にならない）
@@ -667,7 +668,17 @@ const upf = i => UPF[G.k][(i + G.ng) % 3];
 const FIRST_FIXED = [9, 20];
 const pondBuys = () => (G.firstBuy ? Math.max(1, G.pondBuys || 0) : 0);
 const firstOff = () => 1;
-function price(i) { const U = UPG[i], lv = lvOf(i); if (G.ng === 0 && G.k === 0 && pondBuys() < FIRST_FIXED.length && (pondBuys() === 0 || lv === 0)) return FIRST_FIXED[pondBuys()]; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
+// 第13回：一晩目の池（と遅い人の海から先）で最後の買い物から 20 秒たったら、どのボタンも手持ちで買える
+// （底値でも買えるのが 3 つのうち 1 つだけで、でたらめに押す初心者が 34 秒買えなかった）
+const BUY_HELP_T = 20;
+const buyHelp = () => G.ng === 0 && (G.k === 0 || G.slow) && G.wt - (G.lastBuyT || 0) > BUY_HELP_T && G.coins >= 1;
+function price(i) {
+  const U = UPG[i], lv = lvOf(i);
+  if (G.ng === 0 && G.k === 0 && pondBuys() < FIRST_FIXED.length && (pondBuys() === 0 || lv === 0)) return FIRST_FIXED[pondBuys()];
+  if (lv >= U.max) return Infinity;
+  const p = Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice());
+  return buyHelp() ? Math.min(p, Math.floor(G.coins)) : p;
+}
 // 次の厚さで新しく持てるようになる獲物（ボタンに出す）
 function nextUnlock() {
   const c0 = cap(), c1 = capOf(G.lv.t + 1);
@@ -731,6 +742,8 @@ function offerPerks() {
 }
 function perkCardRect(i) { return { x: 22 + i * 230, y: 800, w: 216, h: 250 }; }
 function startWorld(k, first) {
+  if (k === 1 && G.ng === 0) G.slow = G.simT > 90;
+  if (k === 0) G.slow = false;
   G.k = k; G.wt = 0; G.lastScoopT = 0; G.lastBuyT = 0; G.lv ={ t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
   KINDS = WORLDS[k].kinds.filter(K => !K.ng || G.ng >= K.ng);
   G.rareAt = 5; G.swarmAt = SWARM_AT;
