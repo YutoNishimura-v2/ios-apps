@@ -48,7 +48,8 @@ const WORLDS = [
   // 大陸：島は海の底に根を張っている。沈めたまま root 秒おさえないと、上げても抜けない（速乾が効く）
   { id: 'land', name: '大陸', label: '大陸すくい', scale: '×10⁶', vs: 1600, ripple: '220,240,255',
     kinds: [
-      { id: 'shima', name: '小島', draw: 'island', r: 30, w: 0.7, v: 1.2, spd: 26, n: 9, root: 0.3 },
+      // 批評 r14：小島が多くまばらで焦点がない → 7 つに減らし、1 つの値打ちを上げる
+      { id: 'shima', name: '小島', draw: 'island', r: 30, w: 0.7, v: 1.5, spd: 26, n: 7, root: 0.3 },
       { id: 'kazan', name: '火山島', draw: 'volcano', r: 46, w: 2.1, v: 5, spd: 22, n: 4, root: 0.4 },
       { id: 'oshima', name: '大きな島', draw: 'bigisland', r: 66, w: 5.5, v: 16, spd: 18, n: 2, root: 0.55 },
       // 大陸の主役は速乾：根が深く 2.6 秒おさえ続けないと抜けない。その間に紙が濡れる
@@ -69,8 +70,9 @@ const WORLDS = [
   { id: 'cosmos', name: '宇宙', label: '宇宙すくい', scale: '×10²⁰', vs: 2560000, ripple: '210,190,255',
     vortex: { x: 0.5, y: 0.44, R: 290, core: 58, start: 0, gravity: true },
     kinds: [
-      { id: 'ginga', name: '銀河', draw: 'galaxy', r: 26, w: 0.4, v: 0.5, spd: 100, n: 16, school: true },
-      { id: 'seiun', name: '星雲', draw: 'nebula', r: 62, w: 7, v: 16, spd: 34, n: 3 },
+      // 批評 r14：渦巻きと星雲の塊が多くてごちゃごちゃ → 数を減らし、1 つの値打ちを上げる（稼ぎはほぼ同じ）
+      { id: 'ginga', name: '銀河', draw: 'galaxy', r: 26, w: 0.4, v: 0.6, spd: 100, n: 10, school: true },
+      { id: 'seiun', name: '星雲', draw: 'nebula', r: 62, w: 7, v: 16, spd: 34, n: 2 },
       // 宇宙の主役は大きさ：キンちゃんは大きな光の輪をまとっていて、輪ごとすくう（大きさ Lv2 が要る）
       { id: 'kin', name: 'キンちゃん', draw: 'kin', halo: true, r: 150, w: 6, v: 500, spd: 110, n: 1, boss: true, orbit: true },
       // 二晩目から：星の金魚の群れ（宇宙に散った金魚）
@@ -398,7 +400,11 @@ function buildCosmosBG() {
   starDots(g, 100, 51, 0, 0, W, 175, 0.5);
   frame(g, '#1c0f3a', '#3a1f6e', '#c9a8ff');
   waterClip(g);
-  if (!artWater(g, 'cosmos', 'rgba(5,2,20,0.18)')) drawCosmosCode(g);
+  if (artWater(g, 'cosmos', 'rgba(5,2,20,0.18)')) {
+    // 批評 r14：宇宙がごちゃごちゃでキンちゃんが焦点にならない → 背景の彩度を半分に、暗く沈める
+    g.globalCompositeOperation = 'saturation'; g.globalAlpha = 0.6; g.fillStyle = '#808080'; g.fillRect(WATER.x, WATER.y, WATER.w, WATER.h);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.fillStyle = 'rgba(4,2,16,0.38)'; g.fillRect(WATER.x, WATER.y, WATER.w, WATER.h);
+  } else drawCosmosCode(g);
   frameEnd(g, 'rgba(210,180,255,0.6)', 'rgba(5,2,20,0.5)');
   return c;
 }
@@ -631,24 +637,33 @@ function textHits(x, y, hw, hh) {
   let n = 0;
   for (const f of fish) {
     if (f.spawn < 1) continue;
-    const m = f.r * 0.45;
+    // 惑星・太陽などの丸い獲物は絵が r の 7 割まで広がる（批評 r14：+1.4M が惑星にかかった）
+    const m = f.r * (ROUND[f.K.draw] ? 0.9 : 0.6);
     if (Math.abs(f.x - x) < hw + m && Math.abs(f.y - y) < hh + m) n += f.K.boss ? 10 : 1;
   }
   return n;
 }
+// 批評 r14：「+数字」が大きすぎてポイ・惑星にかかった。文字の高さは跳ねても画面の 5%（64px）まで
+const totalSize = target => 50 + Math.min(8, Math.log10(target + 1));
+function poiHit(x, y, hw, hh) {
+  const dx = Math.max(0, Math.abs(x - poi.x) - hw), dy = Math.max(0, Math.abs(y - poi.y) - hh);
+  return dx * dx + dy * dy < (poi.r + 12) * (poi.r + 12) ? 1 : 0;
+}
 function totalPos(target) {
-  const base = 84 + Math.min(56, Math.log10(target + 1) * 10);
+  const base = totalSize(target) * 1.1;
   const hw = (('+' + fmt(target)).length * 0.62 + 0.24) * base / 2, hh = base * 0.55;
   const minY = 300, maxY = Math.min(1000, WATER.y + WATER.h - hh);
   const up = poi.y - poi.r - 70, dn = poi.y + poi.r + 80, sx = poi.r + hw;
   const cands = [[poi.x, up], [poi.x, dn], [poi.x - sx, poi.y], [poi.x + sx, poi.y], [poi.x, up - 2.2 * hh], [poi.x, dn + 2.2 * hh],
-    [poi.x - sx * 0.8, up], [poi.x + sx * 0.8, up], [poi.x - sx * 0.8, dn], [poi.x + sx * 0.8, dn]];
+    [poi.x - sx * 0.8, up], [poi.x + sx * 0.8, up], [poi.x - sx * 0.8, dn], [poi.x + sx * 0.8, dn],
+    [poi.x - sx * 1.3, up], [poi.x + sx * 1.3, up], [poi.x - sx * 1.3, dn], [poi.x + sx * 1.3, dn], [poi.x, minY], [W - poi.x, minY]];
   let best = null;
   cands.forEach(([x0, y0], i) => {
     const x = clamp(x0, WATER.x + hw, WATER.x + WATER.w - hw), y = clamp(y0, minY, maxY);
     // 近いほど良い（同じ数ならポイの上を選ぶ）
-    const s = textHits(x, y, hw, hh) * 100 + i;
-    if (!best || s < best.s) best = { x, y, s, hits: textHits(x, y, hw, hh) };
+    const hits = textHits(x, y, hw, hh) + poiHit(x, y, hw, hh) * 10;
+    const s = hits * 100 + i;
+    if (!best || s < best.s) best = { x, y, s, hits };
   });
   return best;
 }
@@ -1236,9 +1251,15 @@ function decay(dt) {
   G.shx = (frng() - 0.5) * 2 * G.shake; G.shy = (frng() - 0.5) * 2 * G.shake;
 }
 
+// 大陸の段の焦点：x0,y0＝大陸が寄る真ん中、x,y＝島が囲む中心（大陸がいればその位置）、ring＝輪の半径
+function landCenter() {
+  const x0 = WATER.x + WATER.w / 2, y0 = WATER.y + WATER.h * 0.48, b = bossFish();
+  return b ? { x0, y0, x: b.x, y: b.y, ring: b.r * 1.3 } : { x0, y0, x: x0, y: y0, ring: 170 };
+}
 function updateFish(dt) {
   if (dt <= 0) return;
   const n = fish.length, dip = poi.state === 'dip', V = G.vortex && G.vortex.on ? G.vortex : null;
+  const landC = WD().id === 'land' ? landCenter() : null;
   const ax = new Float32Array(n), ay = new Float32Array(n), cx = new Float32Array(n), cy = new Float32Array(n), al = new Float32Array(n * 2), cnt = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     const a = fish[i]; if (a.K.fast) continue;
@@ -1285,6 +1306,17 @@ function updateFish(dt) {
       const Vv = G.vortex; f.orbA = (f.orbA || 0) + dt * (0.45 + f.flee * 0.5);
       const ro = Vv.R0 * 0.7, gx = Vv.x + Math.cos(f.orbA) * ro, gy = Vv.y + Math.sin(f.orbA) * ro;
       fx += (gx - f.x) * 6; fy += (gy - f.y) * 6;
+    }
+    // 批評 r14：大陸の画面に焦点がなかった。大陸は真ん中へ、ほかの島はそのまわりの輪へゆっくり寄る
+    if (landC && !K.fast) {
+      if (K.boss) { fx += (landC.x0 - f.x) * 0.9; fy += (landC.y0 - f.y) * 0.9; }
+      else {
+        const lx = f.x - landC.x, ly = f.y - landC.y, ld = Math.hypot(lx, ly) || 1;
+        // 大陸の上に乗った島は強く押し出す（重なると大陸の絵が読めない）
+        // 輪の半径は島ごとに 3 段にずらす（1 本の輪に詰まると「込み合う」と言われた）
+        const pull = clamp((landC.ring + f.r + ((f.id | 0) % 3) * 55 - ld) * 0.9, -90, 320);
+        fx += lx / ld * pull - ly / ld * 12; fy += ly / ld * pull + lx / ld * 12;
+      }
     }
     // 逃げる（沈めたポイの近く）
     const dx = f.x - poi.x, dy = f.y - poi.y, d = Math.hypot(dx, dy) || 1, range = poi.r + 110 + f.r;
@@ -1812,7 +1844,8 @@ function drawIsland(c, f, r, t, kind) {
   if (IMG[art]) {
     // 批評 r11：小さい島が緑の点に見えた。絵だけ大きく描く（すくえる大きさは変えない）
     // 批評 r13 の前提なしの採点：島が小さくまばら → 小島と火山の絵をもう 3 割大きく（縁は透けるので重なってもなじむ）
-    const half = kind === 'island' ? r * 1.38 : kind === 'volcano' ? r * 1.2 : kind === 'bigisland' ? r * 0.95 : R0 * 1.4;
+    // 批評 r14：大陸の画面に焦点がない → 大陸の絵だけ 1.25 倍にして主役にする
+    const half = kind === 'island' ? r * 1.38 : kind === 'volcano' ? r * 1.2 : kind === 'bigisland' ? r * 0.95 : R0 * 1.75;
     // 批評 r13：暗い影で島が浮いたシールに見えた → 浅瀬の淡い光で海に沈める
     c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.3;
     c.drawImage(bokehSprite('rgba(60,220,210,A)'), -half * 1.25, -half * 1.15, half * 2.5, half * 2.3);
@@ -2020,6 +2053,12 @@ function renderScene(c, hud) {
   // 吸い込まれる獲物
   for (const s of sucked) { const u = s.t / 0.7, V2 = G.vortex; if (!V2) continue; const a = u * 8; drawCreature(c, s.f, lerp(s.x, V2.x, easeIn(u)), lerp(s.y, V2.y, easeIn(u)), s.f.ang + a, 1 - u * 0.9, 1 - u); }
   for (const f of fish) if (!f.K.boss) drawCreature(c, f, f.x, f.y, f.ang, f.spawn, f.spawn);
+  // 批評 r14：宇宙は要素が多く焦点がない → キンちゃんがいる間はまわりを暗くして、キンちゃんに光を当てる
+  if (boss && id === 'cosmos' && boss.spawn > 0) {
+    const sr = boss.r * 0.9, sg = c.createRadialGradient(boss.x, boss.y, sr, boss.x, boss.y, sr + 420);
+    sg.addColorStop(0, 'rgba(2,0,12,0)'); sg.addColorStop(1, `rgba(2,0,12,${0.5 * boss.spawn})`);
+    c.fillStyle = sg; c.fillRect(WATER.x, WATER.y, WATER.w, WATER.h);
+  }
   if (boss) drawCreature(c, boss, boss.x, boss.y, boss.ang, boss.spawn, boss.spawn);
   // 重すぎる獲物には赤い輪（今の紙では持てない）。持てるようになった瞬間は金色に光る
   for (const f of fish) {
@@ -2147,12 +2186,13 @@ function renderScene(c, hud) {
     const u = p.t < 0.25 ? 0 : clamp((p.t - 0.25) / 0.4, 0, 1);
     const big = p.f.r > 90 ? 90 / p.f.r : 1, sc = (1.3 - 1.05 * u) * big;
     p.f.phase += 0.7;
-    drawCreature(c, p.f, p.x, p.y, p.rot, sc, 1);
+    // 批評 r14：瓶へ飛ぶ島が枠の外に描かれて見えた → 後半は薄く消えながら瓶へ
+    drawCreature(c, p.f, p.x, p.y, p.rot, sc, 1 - 0.85 * clamp((u - 0.45) / 0.55, 0, 1));
   }
   if (G.total) {
     const T = G.total, pop = elastic(Math.min(1, T.t * 5));
     const u = clamp((T.t - TOTAL_HOLD) / TOTAL_FLY, 0, 1), e = easeIn(u);
-    const base = (84 + Math.min(56, Math.log10(T.target + 1) * 10)) * pop, size = base * (1 - 0.7 * e);
+    const base = totalSize(T.target) * Math.min(pop, 1.1), size = base * (1 - 0.7 * e);
     c.save(); c.globalAlpha = u > 0.75 ? (1 - u) / 0.25 : 1;
     const s = '+' + fmt(T.target); c.font = '900 ' + base + 'px ' + FONT;
     const hw = c.measureText(s).width / 2 + base * 0.12, x0 = clamp(T.x, 24 + hw, W - 24 - hw);
