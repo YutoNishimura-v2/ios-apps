@@ -500,9 +500,13 @@ const capEff = () => cap() * (1.12 - 0.6 * poi.wet);
 // はじめての人：一晩目の池で、最初の 3 回は破れない。最初の 12 すくいは、ポイの真下にいた金魚が逃げない
 const grace = () => G.ng === 0 && G.k === 0 && (G.dips || 0) <= 3;
 const beginner = () => G.ng === 0 && G.k === 0 && G.scoops < 12;
-// 守りは一度に切らず、12〜EASE_END すくいの間に少しずつ弱める（1 → 0）。批評 r9：守りが切れた直後に 13 秒で 5 回破れた
-const EASE_END = 45;
-const ease = () => (G.ng === 0 && G.k === 0 ? clamp((EASE_END - G.scoops) / (EASE_END - 12), 0, 1) : 0);
+// 守りは一度に切らず、一晩目の池の EASE_FROM〜EASE_TO 秒で少しずつ弱める（1 → 0）。批評 r9：守りが切れた直後に 13 秒で 5 回破れた
+const EASE_FROM = 60, EASE_TO = 170;
+const ease = () => {
+  if (G.ng !== 0 || G.k !== 0) return 0;
+  if (beginner()) return 1;
+  return clamp((EASE_TO - G.wt) / (EASE_TO - EASE_FROM), 0, 1);
+};
 function insidePoi(f) { return Math.hypot(f.x - poi.x, f.y - poi.y) + f.r * 0.55 <= poi.r * 0.98; }
 const tooHeavy = f => f.K.w > cap() + 1e-6;
 // 枠に入りきらない（ポイの大きさが要る）
@@ -759,8 +763,12 @@ function lift() {
   if (!caught.length) { poi.dripT = 0.3; return; }
   let wsum = caught.reduce((s, f) => s + f.K.w, 0);
   const hasBoss = caught.some(f => f.K.boss);
-  // 守りが弱まる間は、少しの重すぎ（持てる重さの 1+0.8×ease 倍まで）なら破れずにこぼれる
-  if (wsum > capEff() && (grace() || (!hasBoss && (beginner() || wsum <= capEff() * (1 + 0.8 * ease()))))) {
+  // 守りが弱まる間は、少しの重すぎ（持てる重さの 1+1.5×ease 倍まで）なら破れずにこぼれる。
+  // 1 匹だけで持てない魚（池の鯉など）も、守りの間はこぼれるだけ（「紙の厚さ」が要ると教える）
+  const oneTooHeavy = caught.length === 1 && caught[0].K.w > capEff();
+  const soft = ease() > 0 && (oneTooHeavy || wsum <= capEff() * (1 + 1.5 * ease()));
+  if (wsum > capEff() && (grace() || (!hasBoss && (beginner() || soft)))) {
+    if (!grace() && !beginner()) G.thickHint = 4;
     // 最初の 3 回（と最初の 12 すくいの間の重すぎ）は破れない：重いものからこぼれる（重さの仕組みだけ見せる）
     caught.sort((a, b) => a.K.w - b.K.w);
     while (caught.length && wsum > capEff()) { const f = caught.pop(); wsum -= f.K.w; f.slip = 0.6; f.flee = 1; splash(f.x, f.y, 10, 0.9); }
@@ -1083,7 +1091,7 @@ function updateFish(dt) {
     }
     // 逃げる（沈めたポイの近く）
     const dx = f.x - poi.x, dy = f.y - poi.y, d = Math.hypot(dx, dy) || 1, range = poi.r + 110 + f.r;
-    const helped = f.inDip && !K.boss && ease() > 0.3;
+    const helped = f.inDip && !K.boss && K.w <= cap() && ease() > 0.3;
     if (helped && dip && !insidePoi(f)) { fx -= dx / d * 900; fy -= dy / d * 900; }
     if (dip && d < range && !K.root && !helped) {
       if (f.alert < 0) f.alert = 0.16 + rng() * 0.3 + (K.school ? 0 : 0.08) + (K.boss ? 0.15 : 0);

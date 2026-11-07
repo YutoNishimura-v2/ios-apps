@@ -7,6 +7,9 @@
 - 直す前の各段 1 枚：`proto/sukuu-html5/rec/tmp/r10/stages_before/`（`sukuu_check.py shots --human --seed 1 --at 40,100,165,232,290 --dir tmp/r10/stages_before`、dir は rec/ からの相対）。一覧 `tmp/r10_stages_before_sheet.png`。数字は 89 → 1,817 → 33.3K → 4.2M → 28.5M。
 - 目標と比べて負けている点：店のボタンが紺の平たい板（目標は金の縁・クリーム色の立体ボタン）／水槽の縁が細い（目標は太い光る青の縁）／海・大陸・星・宇宙の背景がコードの絵で平たい。
 - 進め方：まずボタン（全段で効く）→ 水槽の縁 → 海〜宇宙の背景（gpt-image）。
+- 済み（commit 0e3336e・2b4909f）：店のボタンを金の縁の立体の板に（`drawShopPlate`・`PLATE`、買えないときは紺で下から金が満ちる）、水槽の縁につや、海・大陸・星・宇宙の背景を gpt-image で 4 枚（`assets/sea_water.jpg` ほか、`artWater()`、読めないときはコードの絵）。直した後の各段 1 枚：`rec/tmp/r10/stages_d/`、一覧 `tmp/r10_stages_d_sheet.png`。数字は直す前と同じ（遊びは変わっていない）。ボタンの 3 状態：`tmp/r10/btn_c/stack.png`（道具 `tmp/r10/btn_states.py`）。
+- 批評 r9 = 71 点。直す 3 つ：①守りが切れた直後の連続の破れ（61〜120 秒の破れ ≤4、どの 10 秒でも ≤2、61〜120 秒の稼ぎ ≥ 最初の 60 秒、180 秒で海に着く）②海〜宇宙の見た目（↑で対応）③2 周目に選ぶもの（お守り 3 択、選んだもので池の買う順が変わる、2 周目の各段 ≥30 秒）。
+- 途中（commit ef9aa03 以降）：①`ease()`（一晩目の池 60〜170 秒で 1→0、濡れ・値段 2 倍・重すぎの許し・寄せ）、重さで破れたら「ビリッ！ 重すぎ」＋紙の厚さが 4 秒光る（`G.thickHint`）。③`PERKS`（厚紙・大枠・風・鈴・福袋）、終わりの画面で 3 枚から選ぶ（`drawPerkCards`）、`ngPrice()`（二晩目から値段 ×(1+0.35×ng)）。`sukuu_check.py sim/shots --perk id`。VERSION 10。初心者の試験 `python tmp/r10/hand_check.py tmp/critic/<dir>`。
 
 ## ★★★★ 引き継ぎ（第9回後。いちばん新しい。下の節より優先。詳細と数字は proto/sukuu-html5/NOTES.md「第9回」）
 
