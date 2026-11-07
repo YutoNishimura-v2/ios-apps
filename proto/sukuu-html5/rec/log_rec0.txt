@@ -1,0 +1,16 @@
+frame 0
+frame 150
+frame 300
+frame 450
+frame 600
+frame 750
+first coin       1.733
+first affordable 1.8
+first buy        2.6
+first tear       6.567
+tier 1           13.9
+tier 2           None
+tier 3           None
+scoops 18 tears 2 buys 16
+biggest scoops [(28, 20, 400), (16.333, 18, 180), (17.267, 14, 190), (23.067, 14, 290), (25.267, 13, 530)]
+console errors 0 []

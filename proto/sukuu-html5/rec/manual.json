@@ -1,0 +1,22 @@
+{
+ "mouse": {
+  "dips_detected": 12,
+  "tries": 12,
+  "coins_after_scoops": 147,
+  "earned": 147,
+  "scoops": 10,
+  "dur_lv_before": 0,
+  "dur_lv_after_tap": 1,
+  "console_errors": 0
+ },
+ "touch": {
+  "dips_detected": 9,
+  "tries": 12,
+  "coins_after_scoops": 50,
+  "earned": 50,
+  "scoops": 9,
+  "dur_lv_before": 0,
+  "dur_lv_after_tap": 1,
+  "console_errors": 0
+ }
+}
