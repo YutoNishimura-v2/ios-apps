@@ -5,7 +5,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- 設定
-const VERSION = 12;
+const VERSION = 13;
 const W = 720, H = 1280, TAU = Math.PI * 2;
 const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
@@ -203,7 +203,7 @@ for (const [k, ext, world] of ART) {
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
 // 1024〜1536px の絵を毎コマ縮めて描くと重い（hand で実時間 180 秒がゲーム 146 秒に）。読んだときに一度だけ縮める
-const SPRITE_MAX = { kingyo_body: 192, sp_tai: 192, sp_kame: 256, sp_whale: 512, kin_body: 512 };
+const SPRITE_MAX = { kingyo_body: 192, demekin_body: 192, demekin_red_body: 192, sp_tai: 192, sp_kame: 256, sp_whale: 512, kin_body: 512, kin_tail: 384, sp_koi: 384, sp_bigkoi: 512 };
 function shrinkImage(im, maxSide) {
   const s = Math.min(1, maxSide / Math.max(im.width, im.height));
   if (s >= 1) return im;
@@ -211,7 +211,7 @@ function shrinkImage(im, maxSide) {
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
   return cv;
 }
-for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body', 'sp_tai', 'sp_kame']) {
+for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_small4', 'isl_small5', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body', 'demekin_body', 'demekin_red_body', 'kin_tail', 'sp_koi', 'sp_bigkoi', 'sp_tai', 'sp_kame']) {
   const im = new Image();
   im.onload = () => { IMG[k] = shrinkImage(im, SPRITE_MAX[k] || 384); };
   im.src = 'assets/' + k + '.png';
@@ -790,6 +790,10 @@ function drawKinClose(c, t) {
   const cx = W / 2, cy = (TUB.y + SHOP_Y) / 2, s = 0.75 + 0.25 * easeOut(clamp((t - 0.12) / 0.5, 0, 1));
   c.save();
   c.fillStyle = `rgba(10,0,30,${0.5 * u})`; c.fillRect(0, TUB.y - 8, W, SHOP_Y - TUB.y + 8);
+  // 批評 r12：しぶきの白い粒が魚に何十個もかぶった → 魚のまわりだけ濃い夜空で隠す（粒は魚の後ろ）
+  const dk = c.createRadialGradient(cx, cy, 0, cx, cy, 300 * s);
+  dk.addColorStop(0, `rgba(14,4,34,${0.96 * u})`); dk.addColorStop(0.7, `rgba(14,4,34,${0.9 * u})`); dk.addColorStop(1, 'rgba(14,4,34,0)');
+  c.fillStyle = dk; c.fillRect(cx - 300 * s, cy - 300 * s, 600 * s, 600 * s);
   c.globalAlpha = u * 0.5; c.globalCompositeOperation = 'lighter';
   c.drawImage(bokehSprite('rgba(255,190,70,A)'), cx - 300 * s, cy - 300 * s, 600 * s, 600 * s);
   c.globalAlpha = u;
@@ -1415,8 +1419,27 @@ function botUpdate(dt) {
 }
 
 // ---------------------------------------------------------------- 描画：獲物
-function finTail(c, r, sw, sw2, tcol, tl) {
+// 尾びれの絵（kin_tail）を色ごとに染めて 1 度だけ作る。読めないときは null（コードの尾）
+const tailCache = {};
+function tailArt(col) {
+  const im = IMG.kin_tail;
+  if (!im) return null;
+  if (tailCache[col]) return tailCache[col];
+  const cv = mk(im.width, im.height), g = cv.getContext('2d');
+  g.drawImage(im, 0, 0);
+  if (col !== 'kin') { g.globalCompositeOperation = 'source-atop'; g.fillStyle = col; g.fillRect(0, 0, cv.width, cv.height); }
+  return (tailCache[col] = cv);
+}
+// 批評 r12：尾が橙一色で体の絵と質が合わない → 尾も絵にして、付け根から揺らす（すくう判定は変えない）
+function finTail(c, r, sw, sw2, tcol, tl, art) {
   c.save(); c.translate(-0.42 * r, 0); c.rotate(sw * 0.38);
+  if (art) {
+    const L = 1.02 * r * tl, h = 1.32 * r;
+    c.scale(1, 1 + 0.1 * sw2);
+    c.drawImage(art, -L, -h / 2 + sw2 * 0.06 * r, L + 0.1 * r, h);
+    c.restore();
+    return;
+  }
   // 批評 r11 の確認：尾びれが「平らな板」に見えた。付け根は濃く先は透ける色と、すじ（鰭条）を入れる
   const grad = c.createLinearGradient(0, 0, -0.98 * r * tl, 0);
   grad.addColorStop(0, tcol); grad.addColorStop(1, 'rgba(255,240,225,0.3)');
@@ -1437,16 +1460,23 @@ function finTail(c, r, sw, sw2, tcol, tl) {
   }
   c.restore();
 }
-// 体の絵（読めないときはコードの絵）。出目金はコードのまま
-const bodyArt = kind => (kind === 'kin' ? IMG.kin_body : kind === 'kingyo' ? IMG.kingyo_body : null);
+// 体の絵（読めないときはコードの絵）
+const bodyArt = (kind, black) => (kind === 'kin' ? IMG.kin_body : kind === 'kingyo' ? IMG.kingyo_body
+  : kind === 'demekin' ? (black ? IMG.demekin_body : IMG.demekin_red_body) : null);
 function drawGoldfish(c, f, r, sw, sw2, kind) {
   const deme = kind === 'demekin', kin = kind === 'kin', black = deme && f.var < 2;
   const col = kin ? '#ffb21a' : deme ? (black ? '#1c1c2a' : '#ff3a1e') : KINGYO_COLS[f.var % 4][0];
   const tcol = kin ? 'rgba(255,175,50,0.82)' : deme ? (black ? 'rgba(60,60,110,0.75)' : 'rgba(255,120,90,0.75)') : KINGYO_COLS[f.var % 4][1];
-  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : kin && bodyArt(kind) ? 0.85 : 1.1);
+  const bodyImg = bodyArt(kind, black);
+  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : kin && bodyImg ? 0.85 : 1.1, bodyImg ? tailArt(kin ? 'kin' : tcol) : null);
   c.fillStyle = tcol;
   for (const s of [-1, 1]) { c.save(); c.translate(0.22 * r, s * 0.3 * r); c.rotate(s * (0.9 + sw * 0.35)); c.beginPath(); c.ellipse(-0.1 * r, 0, 0.2 * r, 0.08 * r, 0, 0, TAU); c.fill(); c.restore(); }
-  const bodyImg = bodyArt(kind);
+  if (bodyImg && deme) {
+    // 批評 r12：黒い出目金がコードの絵のまま → 体（飛び出た目まで）を絵に
+    const w = 1.42 * r, h = w * bodyImg.height / bodyImg.width;
+    c.drawImage(bodyImg, -0.66 * r, -h / 2, w, h);
+    return;
+  }
   if (bodyImg) {
     // 批評 r11：キンちゃん・金魚の体が「丸に点 2 つ」に見えた。体は gpt-image の絵（尾・ひれはコードで動かす）。
     // 白い模様（地球の大陸と同じ並び）は絵の上に重ねる
@@ -1481,7 +1511,19 @@ function drawGoldfish(c, f, r, sw, sw2, kind) {
     for (const s of [-1, 1]) { c.beginPath(); c.arc(0.46 * r, s * 0.2 * r, Math.max(1.2, 0.07 * r), 0, TAU); c.fill(); }
   }
 }
+// 鯉の絵：後ろ 35%（尾）を付け根で揺らし、前は 1 枚のまま
+function drawKoiArt(c, im, r, sw, big) {
+  const w = (big ? 2.1 : 2.0) * r, h = w * im.height / im.width, x0 = -1.1 * r, cut = 0.35;
+  const sx = im.width * cut, jx = x0 + w * cut;
+  c.save(); c.translate(jx, 0); c.rotate(sw * 0.28);
+  c.drawImage(im, 0, 0, sx + 4, im.height, -w * cut, -h / 2, w * cut + 4 * w / im.width, h);
+  c.restore();
+  c.drawImage(im, sx, 0, im.width - sx, im.height, jx, -h / 2, w * (1 - cut), h);
+}
 function drawKoi(c, f, r, sw, sw2, big) {
+  // 批評 r12：池の魚が平板 → 鯉と池の主も絵に（読めないときはコードの絵）
+  const art = big ? IMG.sp_bigkoi : IMG.sp_koi;
+  if (art) { drawKoiArt(c, art, r, sw, big); return; }
   c.save(); c.translate(-0.7 * r, 0); c.rotate(sw * 0.3);
   c.fillStyle = big ? 'rgba(255,230,180,0.9)' : 'rgba(255,250,245,0.85)';
   for (const s of [-1, 1]) { c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-0.2 * r, s * 0.25 * r, -0.42 * r, s * 0.3 * r + sw2 * 0.08 * r); c.quadraticCurveTo(-0.3 * r, 0, -0.36 * r, sw2 * 0.05 * r); c.closePath(); c.fill(); }
@@ -1643,7 +1685,8 @@ function drawCreature(c, f, x, y, ang, sc, alpha) {
   const r = f.r * sc, sw = Math.sin(f.phase), sw2 = Math.sin(f.phase - 0.9), t = G.simT, d = f.K.draw;
   c.save(); c.translate(x, y); c.rotate(ROUND[d] ? 0 : ang); c.globalAlpha = alpha;
   if (f.swarm && f.spawn >= 1) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = alpha * (0.45 + 0.2 * Math.sin(t * 6 + f.id)); c.drawImage(bokehSprite('rgba(255,210,60,A)'), -r * 1.3, -r * 1.3, r * 2.6, r * 2.6); c.globalAlpha = alpha; c.globalCompositeOperation = 'source-over'; }
-  if (d === 'kingyo' || d === 'demekin') drawGoldfish(c, f, r, sw, sw2, d);
+  // 批評 r12：池の魚が小さく見えた。絵だけ 1.12 倍（すくえる大きさは変えない）
+  if (d === 'kingyo' || d === 'demekin') drawGoldfish(c, f, r * 1.12, sw, sw2, d);
   else if (d === 'hoshikin') {
     c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(110,190,255,A)'), -r * 1.3, -r * 1.3, r * 2.6, r * 2.6); c.globalCompositeOperation = 'source-over';
     drawGoldfish(c, f, r, sw, sw2, 'kingyo');
@@ -1696,8 +1739,9 @@ function drawIsland(c, f, r, t, kind) {
   const slip = f.slip > 0 ? Math.sin(t * 60) * 3 * f.slip : 0;
   c.translate(slip, 0);
   const R0 = kind === 'continent' ? r * 0.62 : kind === 'bigisland' ? r * 0.6 : r * 0.55;
-  // 小島は 2 種（小屋の島・灯台の島。丸いヤシの島は小さいと緑の点に見えた）。向きは変えない
-  const smallVar = kind === 'island' ? 1 + ((f.id | 0) % 2) : 0;
+  // 小島は丸いヤシの島を使わない（小さいと緑の点に見えた）
+  // 批評 r12：同じ絵が並んで見えた → 4 種（小屋・灯台・社・三日月の砂州）にして、少し傾ける
+  const smallVar = kind === 'island' ? 1 + ((f.id | 0) % 4) : 0;
   const art = smallVar ? 'isl_small' + (smallVar + 1) : ISLAND_ART[kind];
   if (IMG[art]) {
     // 批評 r11：小さい島が緑の点に見えた。絵だけ大きく描く（すくえる大きさは変えない）
@@ -1705,7 +1749,7 @@ function drawIsland(c, f, r, t, kind) {
     c.save(); c.globalAlpha *= 0.45;
     c.drawImage(bokehSprite('rgba(0,18,40,A)'), -half * 0.95 + half * 0.12, -half * 0.95 + half * 0.18, half * 1.9, half * 1.9);
     c.restore();
-    c.save(); if (!smallVar) c.rotate((f.id * 2.399) % TAU);
+    c.save(); c.rotate(smallVar ? ((f.id * 0.77) % 0.7) - 0.35 : (f.id * 2.399) % TAU);
     sprite(c, art, half);
     c.restore();
     if (f.K.cloud) { c.globalAlpha *= 0.85; for (let i = 0; i < 4; i++) c.drawImage(bokehSprite('rgba(255,255,255,A)'), (i - 1.5) * R0 * 0.7 - R0 * 0.6, R0 * 0.55, R0 * 1.2, R0 * 0.7); c.globalAlpha /= 0.85; }
@@ -1754,10 +1798,16 @@ function drawShadow(c, f, x, y, ang, sc) {
 function paperStyle(alphaMul) {
   const w = clamp(poi.wet, 0, 1), b = poi.burn;
   const r = Math.round(lerp(lerp(250, 168, w), 200, b * 0.6)), g = Math.round(lerp(lerp(250, 190, w), 140, b * 0.6)), bl = Math.round(lerp(lerp(246, 205, w), 90, b * 0.6));
-  return `rgba(${r},${g},${bl},${lerp(0.95, 0.5, w) * alphaMul})`;
+  // 批評 r12：不透明な白い板で、すくった魚・下の水が見えなかった → 半透明の薄紙（濡れるほど透ける）
+  return `rgba(${r},${g},${bl},${lerp(0.4, 0.22, w) * alphaMul})`;
 }
 function drawPaper(c, x, y, r, alphaMul) {
   c.fillStyle = paperStyle(alphaMul); c.beginPath(); c.arc(x, y, r * 0.95, 0, TAU); c.fill();
+  // 濡れた紙のつや（左上が光り、縁へ向かって少し曇る）
+  const sh = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 0.95);
+  sh.addColorStop(0, `rgba(255,255,255,${0.32 * alphaMul})`); sh.addColorStop(0.45, 'rgba(255,255,255,0)');
+  sh.addColorStop(0.85, 'rgba(255,255,255,0)'); sh.addColorStop(1, `rgba(235,240,245,${0.35 * alphaMul})`);
+  c.fillStyle = sh; c.beginPath(); c.arc(x, y, r * 0.95, 0, TAU); c.fill();
   c.strokeStyle = 'rgba(160,170,180,0.25)'; c.lineWidth = 1;
   for (const fb of poi.fiber) { c.beginPath(); c.arc(x + fb[0] * r * 0.6, y + fb[1] * r * 0.6, r * fb[3], fb[2], fb[2] + 0.8); c.stroke(); }
   if (poi.burn > 0.05) { c.strokeStyle = `rgba(90,40,10,${poi.burn * 0.8})`; c.lineWidth = r * 0.12; c.beginPath(); c.arc(x, y, r * 0.88, 0, TAU); c.stroke(); }
