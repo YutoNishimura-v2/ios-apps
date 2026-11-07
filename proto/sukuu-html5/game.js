@@ -649,8 +649,9 @@ const omake = () => clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0
 const UPF = [[1, 1.3, 1.3], [1.1, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
 const upf = i => UPF[G.k][(i + G.ng) % 3];
 // はじめての買い物は半額（一晩目の池だけ）
-const firstOff = () => (!G.firstBuy && G.ng === 0 && G.k === 0 ? 0.3 : 1);
-function price(i) { const U = UPG[i], lv = lvOf(i); if (firstOff() < 1) return 9; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
+// 2 回目の買い物も 4 割（批評 r10：初心者の 1 回目→2 回目が 36 秒空いた）
+const firstOff = () => (G.ng === 0 && G.k === 0 ? (!G.firstBuy ? 0.3 : !G.secondBuy ? 0.4 : 1) : 1);
+function price(i) { const U = UPG[i], lv = lvOf(i); if (!G.firstBuy && firstOff() < 1) return 9; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
 // 次の厚さで新しく持てるようになる獲物（ボタンに出す）
 function nextUnlock() {
   const c0 = cap(), c1 = capOf(G.lv.t + 1);
@@ -663,6 +664,7 @@ function buy(i) {
   const p = price(i);
   if (p === Infinity) return false;
   if (G.coins < p) { deny[i] = 0.35; return false; }
+  if (G.firstBuy && G.k === 0) G.secondBuy = true;
   G.coins -= p; G.firstBuy = true;
   const b = btnRect(i); boughtFx[i] = 0.6;
   G.spent = 0.6; addShake(4);
@@ -2313,7 +2315,7 @@ const ENDING_FISH = [0, 1, 2, 3, 0, 2, 3].map((v, i) => ({ K: { draw: i === 3 ? 
 const SAVE_KEY = 'sukuu_save';
 function save() {
   if (BOT || FIXED) return;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: VERSION, k: G.k, coins: G.coins, lv: G.lv, saved: G.saved, kin: G.kin, rescued: G.rescued, ng: G.ng, seen: G.seen, firstBuy: !!G.firstBuy, dips: G.dips || 0, scoops: G.scoops, perks: G.perks || [] })); } catch (e) { }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: VERSION, k: G.k, coins: G.coins, lv: G.lv, saved: G.saved, kin: G.kin, rescued: G.rescued, ng: G.ng, seen: G.seen, firstBuy: !!G.firstBuy, secondBuy: !!G.secondBuy, dips: G.dips || 0, scoops: G.scoops, perks: G.perks || [] })); } catch (e) { }
 }
 function load() {
   if (BOT || FIXED) return false;
@@ -2321,7 +2323,7 @@ function load() {
     if (Q.get('reset') === '1') { localStorage.removeItem(SAVE_KEY); return false; }
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (!s || s.v !== VERSION) return false;
-    Object.assign(G, { coins: s.coins, saved: s.saved, kin: s.kin, rescued: s.rescued, ng: s.ng || 0, seen: s.seen || {}, firstBuy: !!s.firstBuy, dips: s.dips || 0, scoops: s.scoops || 0, perks: s.perks || [] });
+    Object.assign(G, { coins: s.coins, saved: s.saved, kin: s.kin, rescued: s.rescued, ng: s.ng || 0, seen: s.seen || {}, firstBuy: !!s.firstBuy, secondBuy: !!s.secondBuy, dips: s.dips || 0, scoops: s.scoops || 0, perks: s.perks || [] });
     G.disp = G.coins;
     startWorld(s.k, true); G.lv = s.lv; poi.rT = poi.r = radOf(G.lv.s);
     return true;
