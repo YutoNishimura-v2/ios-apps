@@ -361,19 +361,11 @@ function buildSkyBG() {
   frame(g, '#1a1a4a', '#2c2c78', '#8f9fff');
   waterClip(g);
   const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
-  let gr;
   if (!artWater(g, 'sky_space', 'rgba(5,5,30,0.15)')) drawSkyCode(g);
-  // 足もとに地球の縁（さっきまでの海）
-  const ex = W / 2, ey = iy + ih + 1150, er = 1240;
-  g.save(); g.beginPath(); g.arc(ex, ey, er, 0, TAU); g.clip();
-  gr = g.createLinearGradient(0, ey - er, 0, ey - er + 140); gr.addColorStop(0, '#2f8fe0'); gr.addColorStop(1, '#0a2a5a');
-  g.fillStyle = gr; g.fillRect(ix, ey - er, iw, 200);
-  g.fillStyle = 'rgba(70,160,90,0.7)'; g.beginPath(); g.ellipse(W * 0.35, ey - er + 30, 120, 26, 0, 0, TAU); g.fill();
-  g.restore();
-  g.globalCompositeOperation = 'lighter';
-  const a = g.createRadialGradient(ex, ey, er - 10, ex, ey, er + 40); a.addColorStop(0, 'rgba(90,190,255,0.6)'); a.addColorStop(1, 'rgba(90,190,255,0)');
-  g.fillStyle = a; g.beginPath(); g.arc(ex, ey, er + 40, 0, TAU); g.fill();
-  g.globalCompositeOperation = 'source-over';
+  // 批評 r15：足もとの青い地球の縁が「浮いた帯」に見えた → 置かず、下へ向かって暗く沈める（下の段と同じく縁が締まる）
+  const gr = g.createLinearGradient(0, iy + ih * 0.7, 0, iy + ih);
+  gr.addColorStop(0, 'rgba(3,3,16,0)'); gr.addColorStop(1, 'rgba(3,3,16,0.55)');
+  g.fillStyle = gr; g.fillRect(ix, iy + ih * 0.7, iw, ih * 0.3);
   frameEnd(g, 'rgba(170,180,255,0.6)', 'rgba(5,5,30,0.45)');
   return c;
 }
@@ -649,6 +641,16 @@ function poiHit(x, y, hw, hh) {
   const dx = Math.max(0, Math.abs(x - poi.x) - hw), dy = Math.max(0, Math.abs(y - poi.y) - hh);
   return dx * dx + dy * dy < (poi.r + 12) * (poi.r + 12) ? 1 : 0;
 }
+// 批評 r15：「+1,09x」が手（指）とポイの柄に隠れた。柄と手は右下（角 0.95）に伸びる
+function handHit(x, y, hw, hh) {
+  const a = 0.95, L = Math.max(90, poi.r * 1.8);
+  for (const d of [poi.r + L * 0.35, poi.r + L * 0.78]) {
+    const hx = poi.x + Math.cos(a) * d, hy = poi.y + Math.sin(a) * d;
+    const dx = Math.max(0, Math.abs(x - hx) - hw), dy = Math.max(0, Math.abs(y - hy) - hh);
+    if (dx * dx + dy * dy < 60 * 60) return 1;
+  }
+  return 0;
+}
 function totalPos(target) {
   const base = totalSize(target) * 1.1;
   const hw = (('+' + fmt(target)).length * 0.62 + 0.24) * base / 2, hh = base * 0.55;
@@ -661,13 +663,22 @@ function totalPos(target) {
   cands.forEach(([x0, y0], i) => {
     const x = clamp(x0, WATER.x + hw, WATER.x + WATER.w - hw), y = clamp(y0, minY, maxY);
     // 近いほど良い（同じ数ならポイの上を選ぶ）
-    const hits = textHits(x, y, hw, hh) + poiHit(x, y, hw, hh) * 10;
+    const hits = textHits(x, y, hw, hh) + (poiHit(x, y, hw, hh) + handHit(x, y, hw, hh)) * 10;
     const s = hits * 100 + i;
     if (!best || s < best.s) best = { x, y, s, hits };
   });
   return best;
 }
-function floatText(s, x, y, size, fill, stroke, life, rot) { texts.length = 0; texts.push({ s, x, y, size, fill, stroke, life: life || 0.9, t: 0, rot: rot || 0 }); }
+// 文字の幅の見積もり（全角 1 字＝size、半角＝0.62×size）
+const textW = (s, size) => [...s].reduce((w, ch) => w + (ch.charCodeAt(0) > 255 ? 1 : 0.62), 0.3) * size;
+// 批評 r15：「ビリッ！重すぎ」が右端で切れた → 跳ねて少し大きくなっても遊び場（WATER）の中に収める
+function floatText(s, x, y, size, fill, stroke, life, rot) {
+  size = Math.min(size, (WATER.w - 24) / (textW(s, 1) * 1.12));
+  const hw = textW(s, size) * 0.56, hh = size * 0.62;
+  x = clamp(x, WATER.x + hw, WATER.x + WATER.w - hw);
+  y = clamp(y, WATER.y + hh + 40, WATER.y + WATER.h - hh);
+  texts.length = 0; texts.push({ s, x, y, size, fill, stroke, life: life || 0.9, t: 0, rot: rot || 0 });
+}
 function addShake(m) { G.shake = Math.max(G.shake, m); }
 
 // ---------------------------------------------------------------- 入力
@@ -1850,7 +1861,10 @@ function drawIsland(c, f, r, t, kind) {
     c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.3;
     c.drawImage(bokehSprite('rgba(60,220,210,A)'), -half * 1.25, -half * 1.15, half * 2.5, half * 2.3);
     c.restore();
-    c.save(); c.rotate(smallVar ? ((f.id * 0.77) % 0.7) - 0.35 : (f.id * 2.399) % TAU);
+    // 批評 r15：大陸の絵の質。斜め上から見た絵（山の影・滝）を好きな向きに回すと、滝が横に流れて安っぽく見えた
+    // → 大陸と大きな島は少し傾けるだけ（火山は上から見た絵なので回してよい）
+    const tilt = kind === 'continent' || kind === 'bigisland' ? ((f.id * 0.61) % 0.3) - 0.15 : (f.id * 2.399) % TAU;
+    c.save(); c.rotate(smallVar ? ((f.id * 0.77) % 0.7) - 0.35 : tilt);
     sprite(c, art, half);
     c.restore();
     if (f.K.cloud) { c.globalAlpha *= 0.85; for (let i = 0; i < 4; i++) c.drawImage(bokehSprite('rgba(255,255,255,A)'), (i - 1.5) * R0 * 0.7 - R0 * 0.6, R0 * 0.55, R0 * 1.2, R0 * 0.7); c.globalAlpha /= 0.85; }
@@ -1902,19 +1916,38 @@ function paperStyle(alphaMul) {
   // 批評 r12：不透明な白い板で、すくった魚・下の水が見えなかった → 半透明の薄紙（濡れるほど透ける）
   return `rgba(${r},${g},${bl},${lerp(0.4, 0.22, w) * alphaMul})`;
 }
+// 批評 r15：星と宇宙の暗い背景では、白い半透明の紙が「灰色の円盤」に見えた。
+// 暗い段では、真ん中ほど透ける薄膜にして、縁を光らせる（加算）。
+function drawDarkPaper(c, x, y, r, alphaMul) {
+  const w = clamp(poi.wet, 0, 1), a = alphaMul * lerp(1, 0.7, w);
+  const g = c.createRadialGradient(x, y, r * 0.1, x, y, r * 0.95);
+  g.addColorStop(0, `rgba(190,215,255,${0.04 * a})`); g.addColorStop(0.7, `rgba(190,215,255,${0.08 * a})`);
+  g.addColorStop(1, `rgba(210,235,255,${0.3 * a})`);
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 0.95, 0, TAU); c.fill();
+  c.save(); c.globalCompositeOperation = 'lighter';
+  c.strokeStyle = `rgba(150,215,255,${0.55 * a})`; c.lineWidth = 3;
+  c.beginPath(); c.arc(x, y, r * 0.93, 0, TAU); c.stroke();
+  c.strokeStyle = `rgba(255,255,255,${0.6 * a})`; c.lineWidth = 6; c.lineCap = 'round';
+  c.beginPath(); c.arc(x, y, r * 0.8, Math.PI * 1.12, Math.PI * 1.42); c.stroke();
+  c.beginPath(); c.arc(x - r * 0.3, y - r * 0.42, r * 0.06, 0, TAU); c.fillStyle = `rgba(255,255,255,${0.5 * a})`; c.fill();
+  c.restore(); c.lineCap = 'butt';
+}
 function drawPaper(c, x, y, r, alphaMul) {
+  if (G.k >= 3 && poi.burn < 0.05) drawDarkPaper(c, x, y, r, alphaMul);
+  else {
   c.fillStyle = paperStyle(alphaMul); c.beginPath(); c.arc(x, y, r * 0.95, 0, TAU); c.fill();
   // 濡れた紙のつや（左上が光り、縁へ向かって少し曇る）
   const sh = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 0.95);
   sh.addColorStop(0, `rgba(255,255,255,${0.32 * alphaMul})`); sh.addColorStop(0.45, 'rgba(255,255,255,0)');
   sh.addColorStop(0.85, 'rgba(255,255,255,0)'); sh.addColorStop(1, `rgba(235,240,245,${0.35 * alphaMul})`);
   c.fillStyle = sh; c.beginPath(); c.arc(x, y, r * 0.95, 0, TAU); c.fill();
-  c.strokeStyle = 'rgba(160,170,180,0.25)'; c.lineWidth = 1;
+  }
+  c.strokeStyle = G.k >= 3 ? 'rgba(190,220,255,0.16)' : 'rgba(160,170,180,0.25)'; c.lineWidth = 1;
   for (const fb of poi.fiber) { c.beginPath(); c.arc(x + fb[0] * r * 0.6, y + fb[1] * r * 0.6, r * fb[3], fb[2], fb[2] + 0.8); c.stroke(); }
   if (poi.burn > 0.05) { c.strokeStyle = `rgba(90,40,10,${poi.burn * 0.8})`; c.lineWidth = r * 0.12; c.beginPath(); c.arc(x, y, r * 0.88, 0, TAU); c.stroke(); }
   const show = (poi.wet - 0.25) / 0.65 * poi.cracks.length;
   if (show > 0) {
-    c.strokeStyle = 'rgba(60,70,80,0.75)'; c.lineCap = 'round';
+    c.strokeStyle = G.k >= 3 ? 'rgba(220,235,255,0.7)' : 'rgba(60,70,80,0.75)'; c.lineCap = 'round';
     for (let i = 0; i < poi.cracks.length && i < show; i++) {
       const pts = poi.cracks[i], part = Math.min(1, show - i), m = Math.max(1, Math.floor(pts.length * part));
       c.lineWidth = 2.5 - i * 0.15;
@@ -2182,6 +2215,8 @@ function renderScene(c, hud) {
   }
   c.globalAlpha = 1;
   c.setTransform(1, 0, 0, 1, 0, 0);
+  // 批評 r15：瓶へ飛ぶ島が枠の外（上の帯）に描かれた → 遊び場の中だけに描く（瓶は着いたときに跳ねて光る）
+  if (flyers.length) waterClip(c);
   for (const p of flyers) {
     const u = p.t < 0.25 ? 0 : clamp((p.t - 0.25) / 0.4, 0, 1);
     const big = p.f.r > 90 ? 90 / p.f.r : 1, sc = (1.3 - 1.05 * u) * big;
@@ -2189,14 +2224,17 @@ function renderScene(c, hud) {
     // 批評 r14：瓶へ飛ぶ島が枠の外に描かれて見えた → 後半は薄く消えながら瓶へ
     drawCreature(c, p.f, p.x, p.y, p.rot, sc, 1 - 0.85 * clamp((u - 0.45) / 0.55, 0, 1));
   }
+  if (flyers.length) c.restore();
   if (G.total) {
     const T = G.total, pop = elastic(Math.min(1, T.t * 5));
     const u = clamp((T.t - TOTAL_HOLD) / TOTAL_FLY, 0, 1), e = easeIn(u);
     const base = totalSize(T.target) * Math.min(pop, 1.1), size = base * (1 - 0.7 * e);
-    c.save(); c.globalAlpha = u > 0.75 ? (1 - u) / 0.25 : 1;
+    // 批評 r15：上の紙のゲージに「+34.6M」が重なった → 遊び場の右上の角までで薄く消える（上の数字は着いたときに跳ねる）
+    c.save(); c.globalAlpha = u > 0.45 ? Math.max(0, (1 - u) / 0.55) : 1;
     const s = '+' + fmt(T.target); c.font = '900 ' + base + 'px ' + FONT;
-    const hw = c.measureText(s).width / 2 + base * 0.12, x0 = clamp(T.x, 24 + hw, W - 24 - hw);
-    const x = lerp(x0, COUNTER.x - 130, e), y = lerp(T.y, COUNTER.y, e) - Math.sin(u * Math.PI) * 50;
+    const hw = c.measureText(s).width / 2 + base * 0.12, x0 = clamp(T.x, WATER.x + hw, WATER.x + WATER.w - hw);
+    const hwEnd = hw * 0.3, x1 = WATER.x + WATER.w - hwEnd - 10, y1 = WATER.y + size * 0.6 + 6;
+    const x = lerp(x0, x1, e), y = Math.max(lerp(T.y, y1, e) - Math.sin(u * Math.PI) * 50, WATER.y + size * 0.6 + 6);
     c.setTransform(1, 0, 0, 1, u > 0 ? 0 : G.shx, u > 0 ? 0 : G.shy);
     text(c, s, x, y, size, T.rescue ? '#9affc8' : '#ffe14a', T.rescue ? '#0a4a2a' : '#6a1a00', size * 0.17);
     c.restore();
