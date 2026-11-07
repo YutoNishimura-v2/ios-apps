@@ -85,7 +85,7 @@ def frame(sec):
         return img
     t = (sec - STEP * len(ORDER)) / REVEAL
     gal, _, _ = stage_img("galaxy", sec)
-    outer = v2.world_festival(sec, fish_planets=ease(seg(t, 0.45, 0.8)))
+    outer = v2.world_festival(sec, fish_planets=max(0.001, ease(seg(t, 0.45, 0.8))))
     img = v2.nest(outer, gal, seg(t, 0.0, 0.4), ring=False, r_final=95)
     if t > 0.4:
         v2.hook(img, ["最初のたらいの", "金魚、ぜんぶ惑星"])

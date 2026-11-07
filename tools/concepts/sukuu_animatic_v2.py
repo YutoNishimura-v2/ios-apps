@@ -23,10 +23,10 @@ os.makedirs(OUT, exist_ok=True)
 CX, CY, R = W / 2, 640, 260
 
 
-def make_bands(size=600):
+def make_bands(size=600, cols=None):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    cols = [(220, 170, 120), (190, 120, 80), (235, 205, 160), (170, 100, 70), (225, 185, 140)]
+    cols = cols or [(220, 170, 120), (190, 120, 80), (235, 205, 160), (170, 100, 70), (225, 185, 140)]
     for i in range(12):
         y0 = i * size / 12
         d.rectangle((0, y0, size, y0 + size / 12 + 1), fill=cols[i % len(cols)] + (255,))
@@ -38,6 +38,31 @@ def make_bands(size=600):
 
 
 BANDS = make_bands()
+MARS = base.make_planet(600, seed=21, ocean=(190, 80, 50), land=(140, 60, 40))
+NEPTUNE = make_bands(600, [(70, 110, 220), (90, 140, 240), (60, 90, 200), (110, 160, 245)])
+VENUS = make_bands(600, [(235, 210, 150), (225, 195, 130), (240, 220, 170)])
+SATURN = make_bands(600, [(225, 200, 140), (200, 170, 110), (235, 215, 165), (190, 160, 100)])
+
+# 種明かしで、たらい全体に散らす惑星の金魚（位置・向き・模様・名前）
+PLANET_FISH = [
+    (180, 545, 0.3, EARTH, "地球"),
+    (545, 545, 2.8, BANDS, "木星"),
+    (165, 790, -0.2, MARS, "火星"),
+    (555, 790, 3.3, NEPTUNE, "海王星"),
+    (250, 960, 0.5, VENUS, "金星"),
+    (475, 965, 2.6, SATURN, "土星"),
+]
+
+
+def planet_fish_scatter(img, t, mix):
+    """たらいの中に惑星の金魚を散らして描く。mix=0 で普通の金魚、1 で惑星の模様と名前。"""
+    for i, (x, y, ang, tex, name) in enumerate(PLANET_FISH):
+        wob = 8 * math.sin(t * 2 + i)
+        goldfish(img, x + wob, y + wob * 0.5, 44, ang=ang + 0.1 * math.sin(t + i), texture=tex, tex_mix=mix)
+        if mix > 0.6:
+            d = ImageDraw.Draw(img)
+            a = int(255 * min(1.0, (mix - 0.6) / 0.3))
+            d.text((x + wob, y + 62), name, font=base.font(28), fill=(255, 255, 255, a), anchor="mm", stroke_width=4, stroke_fill=(0, 0, 0))
 
 
 def kin_bag(img, exp, glow=0.0, earth_mix=0.0):
@@ -53,7 +78,19 @@ def kin_bag(img, exp, glow=0.0, earth_mix=0.0):
     goldfish(img, x + 62, y + 72, 26, ang=0.2, texture=EARTH, tex_mix=earth_mix)
     d = ImageDraw.Draw(img)
     d.text((x + 140, y + 40), "キンちゃん", font=base.font(26), fill=(255, 255, 255), anchor="lm", stroke_width=4, stroke_fill=(0, 0, 0))
-    d.text((x + 140, y + 85), f"×10^{exp}" if exp else "×1", font=base.font(34), fill=(255, 230, 90), anchor="lm", stroke_width=4, stroke_fill=(0, 0, 0))
+    sup_text(d, x + 140, y + 85, exp)
+
+
+def sup_text(d, x, y, exp, size=34, fill=(255, 230, 90)):
+    """「×10」の右上に指数を小さく描く（×10⁴⁴ の形）。exp=0 なら「×1」。"""
+    f = base.font(size)
+    kw = dict(fill=fill, stroke_width=4, stroke_fill=(0, 0, 0))
+    if not exp:
+        d.text((x, y), "×1", font=f, anchor="lm", **kw)
+        return
+    d.text((x, y), "×10", font=f, anchor="lm", **kw)
+    w = d.textlength("×10", font=f)
+    d.text((x + w + 2, y - size * 0.32), str(exp), font=base.font(int(size * 0.62)), anchor="lm", **kw)
 
 
 def hook(img, lines, y=230, size=50):
@@ -89,13 +126,11 @@ def nest(outer, inner, k, ring=True, paper_alpha=40, r_final=None):
 def world_festival(t, fish_planets=0.0):
     img = Image.new("RGBA", (W, H), (25, 15, 30, 255))
     base.lanterns(img, t * 6)
-    base.festival_tub(img, t * 6)
     if fish_planets > 0:
-        for i in range(9):
-            a = t * 6 * (0.6 + 0.1 * i) + i * 0.7
-            x = 360 + math.cos(a) * (120 + 15 * i) * 0.9
-            y = 760 + math.sin(a * 1.3) * (90 + 12 * i)
-            goldfish(img, x, y, 26 + (i % 3) * 4, ang=a + math.pi / 2, texture=EARTH if i % 2 else BANDS, tex_mix=fish_planets)
+        base.festival_tub(img, t * 6, fish_n=0)
+        planet_fish_scatter(img, t, fish_planets)
+    else:
+        base.festival_tub(img, t * 6)
     return img
 
 
@@ -266,7 +301,7 @@ def clip_reveal_end(t):
         poi(img, CX, CY, R, paper_alpha=60)
         hook(img, ["最後に", "すくったのは……"])
     else:
-        outer = world_festival(t, fish_planets=ease(seg(t, 0.65, 0.9)))
+        outer = world_festival(t, fish_planets=max(0.001, ease(seg(t, 0.65, 0.9))))
         img = nest(outer, c, seg(t, 0.4, 0.7), ring=False)
         if t > 0.7:
             hook(img, ["最初の", "たらいだった"])
