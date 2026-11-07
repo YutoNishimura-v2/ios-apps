@@ -780,8 +780,8 @@ function lift() {
   poi.wet = Math.min(0.95, poi.wet + 0.08);
   poi.dripT = 0.8;
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
-  // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜110 秒で 1→2 倍）値段が上がる＝追いつける
-  const catchUp = G.ng === 0 && G.k === 0 ? 1 + clamp((G.wt - 50) / 60, 0, 1) : 1;
+  // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜130 秒で 1→3 倍）値段が上がる＝追いつける
+  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 2 * clamp((G.wt - 50) / 80, 0, 1) : 1;
   const n = caught.length, m = mult(n) * (beginner() ? 2 : catchUp) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);
