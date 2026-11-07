@@ -98,6 +98,16 @@ def report(evs):
             if nxt - e["t"] > 10:
                 stuck.append((e["item"], e["t"], round(nxt - e["t"], 1)))
     out["maxed_over_10s"] = stuck
+    # ---- 2 周目（第8回）：restart から 60 秒に、1 周目に無かった「新しいできごと」がいくつあるか
+    ri = [i for i, e in enumerate(evs) if e["type"] == "restart"]
+    rs = [evs[i]["t"] for i in ri]
+    if rs:
+        w1 = {e["what"] for e in evs[:ri[0]] if e["type"] == "new"}
+        n2 = [e["what"] for e in evs[ri[0]:] if e["type"] == "new" and e["t"] <= rs[0] + 60 and e["what"] not in w1]
+        out["loop2_new_first60"] = n2
+        s2 = [e for e in evs if e["type"] == "boss_catch" and e["t"] > rs[0]]
+        out["loop2_first_boss_after"] = round(s2[0]["t"] - rs[0], 1) if s2 else None
+    out["earth_reveal"] = [e["t"] for e in evs if e["type"] == "earth_reveal"]
     return out
 
 

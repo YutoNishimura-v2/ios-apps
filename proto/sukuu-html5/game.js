@@ -5,7 +5,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- 設定
-const VERSION = 7;
+const VERSION = 8;
 const W = 720, H = 1280, TAU = Math.PI * 2;
 const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
@@ -30,6 +30,9 @@ const WORLDS = [
       { id: 'demekin', name: '出目金', draw: 'demekin', r: 44, w: 2.6, v: 4, spd: 70, n: 4 },
       { id: 'koi', name: '鯉', draw: 'koi', r: 64, w: 7, v: 15, spd: 58, n: 2 },
       { id: 'nushi', name: '池の主', draw: 'bigkoi', r: 112, w: 17, v: 2200, spd: 40, n: 1, boss: true },
+      // 二晩目から：宇宙から落ちてきた星の金魚（青く光る）と、帰ってきたキンちゃん（すばしこい、高い）
+      { id: 'hoshikin', name: '星の金魚', draw: 'hoshikin', r: 36, w: 1.4, v: 12, spd: 95, n: 3, ng: 1 },
+      { id: 'kinret', name: 'キンちゃん', draw: 'kin', r: 40, w: 2, v: 40, spd: 150, n: 1, ng: 1, rare: 9 },
     ] },
   { id: 'sea', name: '海', label: '海すくい', scale: '×10⁴', vs: 40, ripple: '220,245,255',
     vortex: { x: 0.74, y: 0.3, R: 200, core: 26, start: 5 },
@@ -53,14 +56,14 @@ const WORLDS = [
       { id: 'hoshi', name: '星', draw: 'star', r: 16, w: 0.32, v: 0.35, spd: 120, n: 20, school: true },
       { id: 'meteor', name: '流れ星', draw: 'meteor', r: 28, w: 1.4, v: 7, spd: 330, n: 2, fast: true },
       { id: 'planet', name: '惑星', draw: 'planet', r: 58, w: 7, v: 16, spd: 40, n: 3 },
-      { id: 'sun', name: '太陽', draw: 'sun', r: 120, w: 17, v: 4300, spd: 24, n: 1, boss: true, heat: true },
+      { id: 'sun', name: '太陽', draw: 'sun', r: 120, w: 15, v: 4300, spd: 24, n: 1, boss: true, heat: true },  // 熱で紙が早く濡れる分、少し軽く
     ] },
   { id: 'cosmos', name: '宇宙', label: '宇宙すくい', scale: '×10²⁰', vs: 2560000, ripple: '210,190,255',
     vortex: { x: 0.5, y: 0.44, R: 290, core: 58, start: 0, gravity: true },
     kinds: [
       { id: 'ginga', name: '銀河', draw: 'galaxy', r: 26, w: 0.4, v: 0.5, spd: 100, n: 16, school: true },
       { id: 'seiun', name: '星雲', draw: 'nebula', r: 62, w: 7, v: 16, spd: 34, n: 3 },
-      { id: 'kin', name: 'キンちゃん', draw: 'kin', r: 40, w: 17, v: 500, spd: 110, n: 1, boss: true, orbit: true },
+      { id: 'kin', name: 'キンちゃん', draw: 'kin', r: 40, w: 13, v: 500, spd: 110, n: 1, boss: true, orbit: true },  // 小さいので銀河もいっしょに入る。その分軽く
     ] },
 ];
 // 強化（3 系統）。どれも「取れるもの」を変える
@@ -357,7 +360,9 @@ function seenOnce(key, data) { if (G.seen[key]) return false; G.seen[key] = 1; e
 const PARTS_CAP = 900;
 const fish = [], parts = [], rings = [], texts = [], lifted = [], shards = [], taps = [], flyers = [], sucked = [];
 let fishId = 0;
-const WK = () => WORLDS[G.k].kinds;
+// 今の周で出る獲物（ng つきは二晩目から）。startWorld で決める
+let KINDS = WORLDS[0].kinds.filter(K => !K.ng);
+const WK = () => KINDS;
 const WD = () => WORLDS[G.k];
 
 const KINGYO_COLS = [['#ff4a1c', 'rgba(255,120,80,0.72)'], ['#ff2b2b', 'rgba(255,110,100,0.72)'], ['#ff7a12', 'rgba(255,170,90,0.72)'], ['#ff3d1f', 'rgba(255,235,225,0.75)']];
@@ -421,7 +426,8 @@ const poi = {
 };
 (function () { for (let i = 0; i < 26; i++) poi.fiber.push([rng() * 2 - 1, rng() * 2 - 1, rng() * 6, 0.1 + rng() * 0.25]); })();
 const cap = () => capOf(G.lv.t);
-const capEff = () => cap() * (1 - 0.6 * poi.wet);
+// 乾いた紙は表示より 12% 余裕がある（「→ 〇〇が持てる」を買った直後に、少し濡れただけで破れないように）
+const capEff = () => cap() * (1.12 - 0.6 * poi.wet);
 function insidePoi(f) { return Math.hypot(f.x - poi.x, f.y - poi.y) + f.r * 0.55 <= poi.r * 0.98; }
 const tooHeavy = f => f.K.w > cap() + 1e-6;
 // 枠に入りきらない（ポイの大きさが要る）
@@ -523,8 +529,13 @@ if (!BOT) {
 const press = [0, 0, 0], deny = [0, 0, 0], boughtFx = [0, 0, 0];
 const lvOf = i => G.lv[UPG[i].id];
 // 後の世界ほど少し高い（星・宇宙を駆け抜けて終わらないように）
-const WORLD_PRICE = [1, 1.5, 1.6, 1.9, 2.0];
-function price(i) { const U = UPG[i], lv = lvOf(i); return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k]); }
+// 第8回：人の速さで各段 55〜70 秒・最後の段に 4 分過ぎに着くよう合わせた（sukuu_check.py sim --human seed 1〜3）
+const WORLD_PRICE = [1.7, 2.4, 1.95, 2.55, 2.6];
+const SWARM_AT = 24;
+// おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
+const OMAKE_T = 40;
+const omake = () => clamp(1 - (G.wt - OMAKE_T) * 0.025, 0.4, 1);
+function price(i) { const U = UPG[i], lv = lvOf(i); return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * omake()); }
 // 次の厚さで新しく持てるようになる獲物（ボタンに出す）
 function nextUnlock() {
   const c0 = cap(), c1 = capOf(G.lv.t + 1);
@@ -570,6 +581,9 @@ function showBanner(s, life) {
 // ---------------------------------------------------------------- 世界の始まり・終わり
 function startWorld(k, first) {
   G.k = k; G.wt = 0; G.lv = { t: 0, s: 0, d: 0 };
+  KINDS = WORLDS[k].kinds.filter(K => !K.ng || G.ng >= K.ng);
+  G.rareAt = 5; G.swarmAt = SWARM_AT;
+  BOTS.greedK = HUMAN ? 1.08 : 0.95;
   fish.length = 0; lifted.length = 0; flyers.length = 0; sucked.length = 0; shards.length = 0; parts.length = 0; rings.length = 0;
   poi.state = 'hover'; poi.wet = 0; poi.sink = 0; poi.rT = poi.r = radOf(0); poi.x = poi.tx = W / 2; poi.y = poi.ty = 640; poi.cracks = makeCracks();
   const V = WD().vortex;
@@ -577,16 +591,19 @@ function startWorld(k, first) {
   WK().forEach((K, ki) => {
     if (K.boss) return;
     if (K.school) { spawnAt(ki); return; }
-    if (K.fast) return;
+    if (K.fast || K.rare) return;
     for (let i = 0; i < K.n; i++) makeFish(ki, B.x0 + 40 + rng() * (B.x1 - B.x0 - 80), B.y0 + 40 + rng() * (B.y1 - B.y0 - 80), false);
   });
   for (const f of fish) f.spawn = 1;
   G.bossSpawnT = k === 0 ? 2.2 : 1.2; G.spawnT = 0; G.meteorT = 2;
   ev('world', { world: k, id: WD().id });
   seenOnce('world_' + k);
-  if (!first) showBanner(WD().label, 1.8);
+  if (!first) showBanner(G.ng > 0 && k === 0 ? NIGHT[Math.min(G.ng, NIGHT.length - 1)] + ' ご縁×' + ngMul() : WD().label, 2.2);
   save();
 }
+const NIGHT = ['一晩目', '二晩目', '三晩目', '四晩目', '五晩目'];
+// 二晩目からは、前の晩に救った分のご縁で値段が上がる（×2、×3 …）
+const ngMul = () => 1 + 0.5 * G.ng;
 function bossCaught(f) {
   ev('boss_catch', { kind: f.K.id });
   G.clear = { t: 0 };
@@ -604,7 +621,9 @@ function bossCaught(f) {
 }
 const SNAP = mk(W, H), snapCtx = SNAP.getContext('2d');
 const OFF = mk(W, H), offCtx = OFF.getContext('2d');
-const CLEAR_LEN = 1.5, TRANS_LEN = 3.6, ENDING_LEN = 9;
+const CLEAR_LEN = 1.5, TRANS_LEN = 3.6, EARTH_LEN = 6.4, ENDING_LEN = 9;
+// 大陸 → 星（地球の正体）だけ長く見せる
+const transLen = () => G.trans && G.trans.from === 2 ? EARTH_LEN : TRANS_LEN;
 function beginTransition() {
   G.clear = null;
   // 写しは水しぶき・波紋・ポイ抜きのきれいな世界（ポイの中・終わりの画面で小さく見せる）
@@ -638,8 +657,9 @@ function lift() {
   const boss = caught.find(f => f.K.boss);
   caught.forEach((f, i) => {
     const idx = fish.indexOf(f); if (idx >= 0) fish.splice(idx, 1);
-    const v = f.K.v * WD().vs * (f.danger ? 2 : 1) * m; total += v;
+    const v = f.K.v * WD().vs * (f.danger ? 2 : 1) * (f.swarm ? 2 : 1) * m * ngMul(); total += v;
     if (f.danger) rescue++;
+    if (f.K.rare) G.rareAt = G.wt + f.K.rare;
     lifted.push({ f, dx: f.x - poi.x, dy: f.y - poi.y, t: -i * 0.03, v, i, n });
     if (seenOnce('catch_' + f.K.id, { kind: f.K.id })) ev('first_catch', { kind: f.K.id });
   });
@@ -666,6 +686,8 @@ function tear(caught, why) {
   poi.state = 'torn'; poi.tearT = 0; G.tears++;
   const bossTear = (caught || []).some(f => f.K.boss);
   if (bossTear) BOTS.bossFails[G.k] = (BOTS.bossFails[G.k] || 0) + 1;
+  // 人と同じく、重さで破ったら次は欲張りを控える（同じ失敗を何十回も続けない）
+  else if (why === 'heavy') BOTS.greedK = Math.max(0.7, BOTS.greedK * 0.88);
   ev('tear', { n: caught ? caught.length : 0, why, kinds: (caught || []).map(f => f.K.id), boss: bossTear });
   addShake(14); SFX.rip();
   const a = rng() * Math.PI, jag = [];
@@ -685,7 +707,8 @@ function update(dt) {
   if (G.ending) { updateEnding(dt); return; }
   if (G.trans) {
     G.trans.t += dt;
-    if (G.trans.t >= TRANS_LEN) { G.trans = null; showBanner(WD().label, 1.8); ev('trans_end'); }
+    if (G.trans.from === 2 && !G.trans.earth && G.trans.t >= 2.0) { G.trans.earth = true; ev('earth_reveal'); seenOnce('earth'); }
+    if (G.trans.t >= transLen()) { G.trans = null; showBanner(WD().label, 1.8); ev('trans_end'); }
     decay(dt); return;
   }
   if (G.clear) { G.clear.t += dt; if (G.clear.t >= CLEAR_LEN) { beginTransition(); return; } }
@@ -738,6 +761,8 @@ function update(dt) {
     poi.load = 0; poi.over = Math.max(0, poi.over - dt * 4);
     if (input.down && !G.clear) {
       poi.state = 'dip'; poi.dipT = 0; SFX.dip();
+      // 沈めた瞬間にポイの下にいた群れだけが入る（外の群れは流れ込まない＝見たとおりにすくえる）
+      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r;
       splash(poi.x, poi.y, 8, 0.7); rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 120, life: 0.6, t: 0, w: 5 });
     }
   } else if (poi.state === 'dip') {
@@ -771,11 +796,25 @@ function update(dt) {
     let best = -1, bd = 0;
     WK().forEach((K, ki) => {
       if (K.boss || K.fast) return;
+      if (K.rare && G.wt < G.rareAt) return;
       const lim = K.school ? K.n * 0.45 : K.n;
       const d = (K.n - cnt[ki]) / K.n;
       if (cnt[ki] < lim + (K.school ? 0 : 0) && d > bd) { bd = d; best = ki; }
     });
-    if (best >= 0) { spawnAt(best, false); G.spawnT = 0.35; }
+    if (best >= 0) {
+      const K = WK()[best], f = spawnAt(best, !!K.rare); G.spawnT = 0.35;
+      if (K.rare && f) { G.rareAt = Infinity; ev('rare_appear', { kind: K.id }); seenOnce('appear_' + K.id); sparks(f.x, f.y, 24, '#ffe14a', 300); SFX.unlock(); if (!G.banner && !G.total) floatText('おかえり！', f.x, clamp(f.y - 90, 300, 1000), 64, '#ffe14a', '#5a2a00', 1.1); }
+    }
+  }
+  // 大群：段に入って SWARM_AT 秒で、いちばん小さい獲物が群れで湧く（その群れは 2 倍の値段・金色に光る）
+  if (G.wt >= G.swarmAt && !G.clear) {
+    G.swarmAt = Infinity;
+    const ki = WK().findIndex(K => !K.boss && !K.fast && !K.rare), K = WK()[ki];
+    const x = lerp(B.x0 + 160, B.x1 - 160, rng()), y = lerp(B.y0 + 200, B.y1 - 200, rng());
+    for (let i = 0; i < 14; i++) { const a = rng() * TAU, d = 30 + rng() * 110; const f = makeFish(ki, clamp(x + Math.cos(a) * d, B.x0 + 20, B.x1 - 20), clamp(y + Math.sin(a) * d, B.y0 + 20, B.y1 - 20), true); f.swarm = 1; }
+    splash(x, y, 40, 1.6); rings.push({ x, y, r: 20, vr: 380, life: 0.9, t: 0, w: 10 }); addShake(8); SFX.unlock();
+    ev('swarm', { kind: K.id }); seenOnce('swarm_' + G.k);
+    if (!G.banner && !G.total) floatText('大群！', x, clamp(y - 150, 300, 1000), 84, '#ffe14a', '#6a1a00', 1.1);
   }
   // 流れ星
   const mk_ = WK().findIndex(K => K.fast);
@@ -813,7 +852,8 @@ function update(dt) {
   for (let i = sucked.length - 1; i >= 0; i--) { const s = sucked[i]; s.t += sdt; if (s.t > 0.7) sucked.splice(i, 1); }
   updateParts(sdt);
 
-  if (!G.afforded && G.coins >= Math.min(price(0), price(1), price(2))) { G.afforded = true; ev('afford', { coins: G.coins }); }
+  if (G.wt >= OMAKE_T && !G.clear) seenOnce('omake_' + G.k);
+  if (!G.afforded && G.coins >=Math.min(price(0), price(1), price(2))) { G.afforded = true; ev('afford', { coins: G.coins }); }
   decay(dt);
 }
 function updateFlyers(sdt) {
@@ -913,6 +953,7 @@ function updateFish(dt) {
       f.alert -= dt;
       if (f.alert <= 0) { f.flee = 1; const s = (K.school ? 1100 : 900) * (1 - d / range) + 250; fx += dx / d * s * (K.boss ? 0.5 : 1); fy += dy / d * s * (K.boss ? 0.5 : 1); }
     } else if (!dip) f.alert = -1;
+    if (dip && K.school && !f.inDip && d < poi.r + f.r + 20) { const p = 1 - (d - poi.r) / (f.r + 20); fx += dx / d * 2400 * clamp(p, 0.3, 1.5); fy += dy / d * 2400 * clamp(p, 0.3, 1.5); }
     f.flee = Math.max(0, f.flee - dt * 0.8);
     // 渦
     f.danger = 0;
@@ -945,6 +986,7 @@ function updateEnding(dt) {
     G.ending = null; G.ng++; FIRE.length = 0; ev('restart', { ng: G.ng });
     G.coins = G.disp = 0; G.seen = {}; BOTS.bossFails = {};
     startWorld(0, false);
+    seenOnce('night_' + G.ng, { mul: ngMul() });
   }
   decay(dt);
 }
@@ -956,7 +998,7 @@ function firework(x, y) {
 }
 
 // ---------------------------------------------------------------- bot（決定的）
-const BOTS = { st: 'seek', t: 0, px: W / 2, py: 640, hold: 0, re: 0, anchor: null, maxIn: 0, shopI: -1, greedW: -1, bossFails: {} };
+const BOTS = { st: 'seek', t: 0, px: W / 2, py: 640, hold: 0, re: 0, anchor: null, maxIn: 0, shopI: -1, greedW: -1, bossFails: {}, greedK: HUMAN ? 1.08 : 0.95 };
 const BOT_SPD = HUMAN ? 1100 : 2600, BOT_REACT = HUMAN ? 0.45 : 0.12;
 function clusterAt(x, y, rr) {
   let n = 0, w = 0, v = 0, sx = 0, sy = 0;
@@ -964,7 +1006,7 @@ function clusterAt(x, y, rr) {
   return { n, w, v, cx: n ? sx / n : x, cy: n ? sy / n : y };
 }
 // 主を狙えるか：濡れを見込んだ持てる重さ。主で破れるたびに、見込みを厳しくする（もっと強化してから挑む）
-const botMargin = () => 1 - 0.6 * Math.min(0.8, 0.15 + 0.2 * (BOTS.bossFails[G.k] || 0));
+const botMargin = () => 1.12 - 0.6 * Math.min(0.8, 0.15 + 0.2 * (BOTS.bossFails[G.k] || 0));
 function botCanBoss() { const b = bossFish(); return b && b.spawn >= 1 && cap() * botMargin() >= b.K.w && !tooBig(b) ? b : null; }
 function botPick() {
   const b = botCanBoss();
@@ -984,7 +1026,7 @@ function botPick() {
   // 島（根）は長くおさえる分だけ濡れるのを見込む
   const expHold = WK().some(K => K.root) ? 0.75 : 0.3;
   const wetEnd = Math.min(1, poi.wet + 0.32 * expHold * dryOf(G.lv.d) * (1 + 0.1 * G.lv.s));
-  const rr = poi.r * 0.86, lim = cap() * (1 - 0.6 * wetEnd) * (HUMAN ? 1.08 : 0.95);
+  const rr = poi.r * 0.86, lim = cap() * (1.12 - 0.6 * wetEnd) * BOTS.greedK;
   let best = null, bs = -1;
   for (const f of fish) {
     if (f.spawn < 1 || f.K.fast || f.K.boss) continue;
@@ -1030,7 +1072,7 @@ function botUpdate(dt) {
     const d = move(S.anchor.x, S.anchor.y, BOT_SPD);
     const ready = S.anchor.meteor ? Math.hypot(S.anchor.meteor.x - poi.x, S.anchor.meteor.y - poi.y) < poi.r + 140 : true;
     if (d < 10 && S.t > BOT_REACT && ready) {
-      pDown(S.px, S.py); S.st = 'dip'; S.t = 0; S.maxIn = 0;
+      pDown(S.px, S.py); S.st = 'dip'; S.t = 0; S.maxIn = 0; S.warnT = null;
       S.hold = S.anchor.greed ? 0.5 : S.anchor.boss ? 1.6 : S.anchor.meteor ? 1.0 : (HUMAN ? 0.34 : 0.24) + brng() * 0.14;
       const rootMax = Math.max(0, ...fish.filter(f => f.K.root && Math.hypot(f.x - S.px, f.y - S.py) < poi.r).map(f => f.K.root));
       S.rooted = rootMax;
@@ -1057,7 +1099,10 @@ function botUpdate(dt) {
     S.maxIn = Math.max(S.maxIn, c.n);
     if (!S.rooted) move(c.cx, c.cy, 260);
     // 沈みきる前（0.14 秒）に上げると空振りになるので、重さで上げるのは沈んでから
-    if (S.t >= S.hold || (!S.rooted && S.t > 0.14 && (c.n < S.maxIn || (!HUMAN && c.w > capEff() * 0.95)))) end();
+    // 人の速さの bot：重さの印が赤くなりかけたのを見てから 0.2 秒で上げる（見て反応する分だけ遅れる）
+    if (HUMAN && S.warnT == null && c.w > capEff() * 0.85) S.warnT = S.t;
+    const late = HUMAN && S.warnT != null && S.t - S.warnT > 0.2;
+    if (S.t >= S.hold || (!S.rooted && S.t > 0.14 && (c.n < S.maxIn || late || (!HUMAN && c.w > capEff() * 0.95)))) end();
   } else if (S.st === 'cool') {
     if (S.t > (HUMAN ? 0.35 : 0.2)) { S.st = 'seek'; S.t = 0; S.anchor = null; }
   } else if (S.st === 'shop') {
@@ -1223,10 +1268,11 @@ function drawSun(c, f, r, t) {
 function drawGalaxy(c, f, r, t) {
   c.rotate(f.spin + t * 0.6);
   c.globalCompositeOperation = 'lighter';
-  c.drawImage(bokehSprite('rgba(200,170,255,A)'), -r * 0.9, -r * 0.9, r * 1.8, r * 1.8);
+  // 背景（紫）と見分けやすいよう、銀河は水色と白
+  c.drawImage(bokehSprite('rgba(140,220,255,A)'), -r * 0.9, -r * 0.9, r * 1.8, r * 1.8);
   for (let arm = 0; arm < 2; arm++) for (let i = 0; i < 14; i++) {
     const u = i / 14, a = arm * Math.PI + u * 4.2, d = u * r * 0.85;
-    c.fillStyle = `rgba(${200 + arm * 40},${200 - u * 60},255,${0.9 - u * 0.6})`;
+    c.fillStyle = `rgba(${170 + arm * 60},${240 - u * 40},255,${0.95 - u * 0.5})`;
     c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d * 0.7, r * (0.09 - u * 0.05), 0, TAU); c.fill();
   }
   c.fillStyle = '#fff6e0'; c.beginPath(); c.arc(0, 0, r * 0.14, 0, TAU); c.fill();
@@ -1242,7 +1288,13 @@ function drawNebula(c, f, r, t) {
 function drawCreature(c, f, x, y, ang, sc, alpha) {
   const r = f.r * sc, sw = Math.sin(f.phase), sw2 = Math.sin(f.phase - 0.9), t = G.simT, d = f.K.draw;
   c.save(); c.translate(x, y); c.rotate(ROUND[d] ? 0 : ang); c.globalAlpha = alpha;
+  if (f.swarm && f.spawn >= 1) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = alpha * (0.45 + 0.2 * Math.sin(t * 6 + f.id)); c.drawImage(bokehSprite('rgba(255,210,60,A)'), -r * 1.3, -r * 1.3, r * 2.6, r * 2.6); c.globalAlpha = alpha; c.globalCompositeOperation = 'source-over'; }
   if (d === 'kingyo' || d === 'demekin') drawGoldfish(c, f, r, sw, sw2, d);
+  else if (d === 'hoshikin') {
+    c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(110,190,255,A)'), -r * 1.3, -r * 1.3, r * 2.6, r * 2.6); c.globalCompositeOperation = 'source-over';
+    drawGoldfish(c, f, r, sw, sw2, 'kingyo');
+    c.fillStyle = '#e8f6ff'; for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1 + f.id, s = r * (0.07 + 0.03 * Math.sin(t * 8 + i)); const x0 = Math.cos(a) * r * 0.55, y0 = Math.sin(a) * r * 0.4; c.beginPath(); c.moveTo(x0, y0 - s * 2); c.lineTo(x0 + s * 0.5, y0); c.lineTo(x0, y0 + s * 2); c.lineTo(x0 - s * 0.5, y0); c.closePath(); c.fill(); c.beginPath(); c.moveTo(x0 - s * 2, y0); c.lineTo(x0, y0 + s * 0.5); c.lineTo(x0 + s * 2, y0); c.lineTo(x0, y0 - s * 0.5); c.closePath(); c.fill(); }
+  }
   else if (d === 'kin') {
     c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -r * 1.4, -r * 1.4, r * 2.8, r * 2.8); c.globalCompositeOperation = 'source-over';
     drawGoldfish(c, f, r, sw, sw2, 'kin');
@@ -1401,7 +1453,8 @@ function renderScene(c, hud) {
     c.fillRect(WATER.x - ox, WATER.y - oy, WATER.w, WATER.h); c.restore();
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
   } else {
-    for (const s of TWINKLE) { c.globalAlpha = 0.25 + 0.6 * Math.abs(Math.sin(t * 1.5 + s[3])); c.fillStyle = '#fff'; c.fillRect(s[0], s[1], s[2], s[2]); }
+    const tw = id === 'cosmos' ? 0.4 : 1;
+    for (const s of TWINKLE) { c.globalAlpha = (0.25 + 0.6 * Math.abs(Math.sin(t * 1.5 + s[3]))) * tw; c.fillStyle = '#fff'; c.fillRect(s[0], s[1], s[2], s[2]); }
     c.globalAlpha = 1;
   }
   drawVortex(c, V, t);
@@ -1539,7 +1592,7 @@ function renderScene(c, hud) {
   else drawTutorial(c);
   for (const tp of taps) { const u = tp.t / 0.4; c.strokeStyle = `rgba(255,255,255,${1 - u})`; c.lineWidth = 4; c.beginPath(); c.arc(tp.x, tp.y, 10 + u * 50, 0, TAU); c.stroke(); }
   if (G.banner) drawBanner(c, G.banner);
-  if (G.flash > 0) { c.fillStyle = `rgba(255,255,255,${Math.min(1, G.flash)})`; c.fillRect(0, 0, W, H); }
+  if (G.flash > 0) { c.fillStyle = `rgba(255,255,255,${Math.min(0.85, G.flash)})`; c.fillRect(0, 0, W, SHOP_Y); }
   if (G.caption) {
     const u = G.caption.t / G.caption.life, s = elastic(Math.min(1, G.caption.t * 4));
     c.save(); c.translate(W / 2, 270); c.scale(s, s); c.globalAlpha = u > 0.85 ? (1 - u) / 0.15 : 1;
@@ -1612,10 +1665,10 @@ function drawHUD(c) {
   g.addColorStop(0, 'rgba(5,5,15,0.65)'); g.addColorStop(1, 'rgba(5,5,15,0)');
   c.fillStyle = g; c.fillRect(0, 0, W, 175);
   // 袋と、すくった数。海で初めて渦から救うと「救った」に変わる
-  const glow = G.trans && G.trans.from === 2 ? clamp((G.trans.t - 1.6) / 0.6, 0, 1) * clamp((TRANS_LEN - G.trans.t) / 0.6, 0, 1) : 0;
+  const glow = G.trans && G.trans.from === 2 ? clamp((G.trans.t - 2.4) / 0.6, 0, 1) * clamp((EARTH_LEN - 1.2 - G.trans.t) / 0.6, 0, 1) : 0;
   drawBag(c, BAG.x, BAG.y, BAG.r, glow);
   text(c, (G.rescued > 0 ? '救った ' : 'すくった ') + fmt(G.saved), 170, 82, 30, G.rescued > 0 ? '#9affc8' : '#ffffff', '#000', 6, 'left');
-  text(c, WD().label + (WD().scale ? '  ' + WD().scale : ''), 172, 116, 22, '#c8d4ff', '#000', 4, 'left', '700');
+  text(c, (G.ng > 0 ? NIGHT[Math.min(G.ng, NIGHT.length - 1)] + '・ご縁×' + ngMul() + '  ' : '') + WD().label + (WD().scale ? '  ' + WD().scale : ''), 172, 116, 22, G.ng > 0 ? '#ffe28a' : '#c8d4ff', '#000', 4, 'left', '700');
   // コイン（右上）
   const bs = 1 + 0.4 * easeOut(G.bump);
   c.save(); c.translate(COUNTER.x, COUNTER.y); c.scale(bs, bs);
@@ -1680,6 +1733,13 @@ function drawShop(c) {
       coinIcon(c, -w / 2 - 14, y + 160, 12);
       text(c, ps2, 8, y + 161, 30, deny[i] > 0 ? '#ff4a3a' : can ? '#ffffff' : '#ffd23a', can ? '#7a2a00' : '#000', 6);
     }
+    // おまけの札（値引き中）
+    if (!maxed && omake() < 1) {
+      c.save(); c.translate(x + b.w - 30, y + 14); c.rotate(0.18);
+      c.fillStyle = '#e8262a'; rr(c, -46, -16, 92, 32, 10); c.fill(); c.lineWidth = 2.5; c.strokeStyle = '#fff3c0'; c.stroke();
+      text(c, 'おまけ -' + Math.round((1 - omake()) * 100) + '%', 0, 1, 16, '#ffffff', null, 0, 'center', '900');
+      c.restore();
+    }
     if (boughtFx[i] > 0) { c.globalAlpha = boughtFx[i] / 0.6; c.fillStyle = '#ffffff'; rr(c, x, y, b.w, b.h, 26); c.fill(); c.globalAlpha = 1; }
     c.restore();
   }
@@ -1695,7 +1755,88 @@ function drawBanner(c, b) {
 }
 
 // ---------------------------------------------------------------- 世界の移り変わり：さっきまでの世界が、新しい世界のポイの中に小さく入る
+// 地球（大陸の並び＝キンちゃんの模様と同じ。drawGoldfish の KIN_PATCH と同じ式で描く）
+function drawEarth(c, x, y, er, glowPatch) {
+  c.save(); c.translate(x, y);
+  // 大気の光
+  c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.9;
+  c.drawImage(bokehSprite('rgba(90,170,255,A)'), -er * 1.45, -er * 1.45, er * 2.9, er * 2.9);
+  c.globalAlpha /= 0.9; c.globalCompositeOperation = 'source-over';
+  c.beginPath(); c.arc(0, 0, er, 0, TAU); c.save(); c.clip();
+  const gg = c.createRadialGradient(-er * 0.35, -er * 0.35, er * 0.1, 0, 0, er); gg.addColorStop(0, '#4fb0f0'); gg.addColorStop(0.7, '#1d62b8'); gg.addColorStop(1, '#0b2a6a');
+  c.fillStyle = gg; c.fillRect(-er, -er, er * 2, er * 2);
+  const R0 = er * 1.15;
+  for (const p of KIN_PATCH) {
+    c.fillStyle = '#5fae4a'; c.beginPath(); c.ellipse(p[0] * R0 * 1.6, p[1] * R0 * 1.2, p[2] * R0 * 1.5, p[2] * R0 * 1.1, 0.4, 0, TAU); c.fill();
+    c.fillStyle = '#b89a5a'; c.beginPath(); c.ellipse(p[0] * R0 * 1.6 + p[2] * R0 * 0.2, p[1] * R0 * 1.2, p[2] * R0 * 0.7, p[2] * R0 * 0.45, 0.4, 0, TAU); c.fill();
+    if (glowPatch > 0) { c.strokeStyle = `rgba(255,225,90,${glowPatch})`; c.lineWidth = Math.max(3, er * 0.025); c.beginPath(); c.ellipse(p[0] * R0 * 1.6, p[1] * R0 * 1.2, p[2] * R0 * 1.5 + 4, p[2] * R0 * 1.1 + 4, 0.4, 0, TAU); c.stroke(); }
+  }
+  // 雲
+  c.fillStyle = 'rgba(255,255,255,0.55)';
+  c.beginPath(); c.ellipse(-er * 0.25, -er * 0.62, er * 0.42, er * 0.07, 0.15, 0, TAU); c.fill();
+  c.beginPath(); c.ellipse(er * 0.35, er * 0.55, er * 0.3, er * 0.06, -0.2, 0, TAU); c.fill();
+  // 夜の側
+  const sh = c.createRadialGradient(-er * 0.5, -er * 0.5, er * 0.6, -er * 0.2, -er * 0.2, er * 1.6); sh.addColorStop(0, 'rgba(0,0,20,0)'); sh.addColorStop(1, 'rgba(0,0,20,0.7)');
+  c.fillStyle = sh; c.fillRect(-er, -er, er * 2, er * 2);
+  c.restore();
+  c.strokeStyle = 'rgba(160,220,255,0.7)'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, er, 0, TAU); c.stroke();
+  c.restore();
+}
+const EARTH_KIN = { K: { draw: 'kin', r: 40 }, r: 150, var: 0, phase: 0, patches: [], isKin: true };
+// 大陸 → 星：縮んだ大陸が地球になり、大きく止まる。袋のキンちゃんが出てきて、同じ模様が光る
+function drawEarthTrans(c, t) {
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.drawImage(OFF, 0, 0);
+  const WX = WATER.x + WATER.w / 2, WY = WATER.y + WATER.h / 2, EY = WY - 70, ER = 210;
+  const u = easeInOut(clamp((t - 0.2) / 1.4, 0, 1));          // 大陸の写しが丸く縮む
+  const ea = clamp((t - 1.2) / 0.8, 0, 1);                       // 地球が見えてくる
+  const sh = easeInOut(clamp((t - 4.6) / 0.9, 0, 1));          // ポイの大きさへ
+  const fly = clamp((t - 5.6) / 0.8, 0, 1), fe = easeIn(fly);   // 袋へ
+  const toR = poi.r * 0.92;
+  const r0 = lerp(ER, toR, sh), cx = lerp(lerp(WX, poi.x, sh), BAG.x, fe), cy = lerp(lerp(EY, poi.y, sh), BAG.y, fe), rr_ = r0 * (1 - 0.8 * fe);
+  // まわりを暗く（地球に目が行くように）
+  const dim = clamp((t - 1.0) / 0.6, 0, 1) * (1 - sh);
+  if (dim > 0) { c.fillStyle = `rgba(2,4,14,${0.6 * dim})`; c.fillRect(0, 0, W, SHOP_Y); }
+  if (fly < 1) {
+    c.save(); c.globalAlpha = 1 - fe;
+    // 写し（大陸の世界）を丸く切り抜いて縮める
+    if (ea < 1) {
+      const s = lerp(1, (ER * 2) / WATER.w, u);
+      c.save(); c.translate(lerp(WX, cx, u), lerp(WY, cy, u)); c.scale(s, s);
+      const w = WATER.w, h = lerp(WATER.h, WATER.w, u), r = lerp(WATER.r, WATER.w / 2, u);
+      rr(c, -w / 2, -h / 2, w, h, r); c.clip();
+      c.drawImage(SNAP, -WX, -WY);
+      c.restore();
+    }
+    if (ea > 0) {
+      c.globalAlpha = (1 - fe) * ea;
+      const glow = clamp((t - 3.0) / 0.4, 0, 1) * (1 - sh) * (0.6 + 0.4 * Math.sin(t * 7));
+      drawEarth(c, cx, cy, rr_, glow);
+    }
+    c.restore();
+    if (sh > 0.5 && fly <= 0) drawRing(c, poi.x, poi.y, poi.r, (sh - 0.5) * 2);
+  }
+  // キンちゃん：袋から出てきて地球の下で止まり、同じ模様が光る → 袋へ戻る
+  const kin_in = easeOut(clamp((t - 2.4) / 0.7, 0, 1)), kin_out = easeIn(clamp((t - 4.5) / 0.6, 0, 1));
+  if (kin_in > 0 && kin_out < 1) {
+    const kx = lerp(BAG.x, WX + 40, kin_in), ky = lerp(BAG.y, EY + ER + 105, kin_in);
+    const x = lerp(kx, BAG.x, kin_out), y = lerp(ky, BAG.y, kin_out), sc = lerp(0.4, 1, kin_in) * (1 - 0.7 * kin_out);
+    EARTH_KIN.phase = t * 6;
+    drawCreature(c, EARTH_KIN, x, y, 0, sc, 1);
+    const glow = clamp((t - 3.0) / 0.4, 0, 1) * (1 - kin_out) * (0.6 + 0.4 * Math.sin(t * 7));
+    if (glow > 0) {
+      // 体の模様のふちを光らせる（地球の大陸と同じ並び）
+      const r = EARTH_KIN.r * sc;
+      c.save(); c.translate(x, y); c.beginPath(); c.ellipse(0.06 * r, 0, 0.58 * r, 0.35 * r, 0, 0, TAU); c.clip();
+      c.strokeStyle = `rgba(255,225,90,${glow})`; c.lineWidth = 4;
+      for (const p of KIN_PATCH) { c.beginPath(); c.ellipse(p[0] * r * 1.6, p[1] * r * 1.2, p[2] * r * 1.5 + 2, p[2] * r * 1.1 + 2, 0.4, 0, TAU); c.stroke(); }
+      c.restore();
+    }
+  }
+  if (t < 0.4) { c.fillStyle = `rgba(255,255,255,${0.8 * (1 - t / 0.4)})`; c.fillRect(0, 0, W, SHOP_Y); }
+}
 function drawTrans(c, t) {
+  if (G.trans.from === 2) { drawEarthTrans(c, t); return; }
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.drawImage(OFF, 0, 0);
   const WX = WATER.x + WATER.w / 2, WY = WATER.y + WATER.h / 2;
@@ -1710,19 +1851,6 @@ function drawTrans(c, t) {
     const w = WATER.w, h = lerp(WATER.h, WATER.w, u), r = lerp(WATER.r, WATER.w / 2, u);
     rr(c, -w / 2, -h / 2, w, h, r); c.clip();
     c.drawImage(SNAP, -WX, -WY);
-    // 海 → 星：丸くなった海が地球に見える（大陸はキンちゃんの模様と同じ並び）
-    if (G.trans.from === 2) {
-      const ea = clamp((t - 1.4) / 0.8, 0, 1);
-      if (ea > 0) {
-        const er = w / 2;
-        c.globalAlpha = (1 - fe) * ea;
-        const gg = c.createRadialGradient(-er * 0.3, -er * 0.3, er * 0.1, 0, 0, er); gg.addColorStop(0, 'rgba(60,150,230,0.85)'); gg.addColorStop(1, 'rgba(10,40,110,0.95)');
-        c.fillStyle = gg; c.fillRect(-er, -er, er * 2, er * 2);
-        c.fillStyle = 'rgba(90,170,90,0.95)';
-        for (const p of KIN_PATCH) { c.beginPath(); c.ellipse(p[0] * er * 1.6, p[1] * er * 1.6, p[2] * er * 2.2, p[2] * er * 1.6, 0.4, 0, TAU); c.fill(); }
-        c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(-er * 0.2, -er * 0.55, er * 0.5, er * 0.08, 0.2, 0, TAU); c.fill();
-      }
-    }
     c.restore();
     if (u > 0.5) {
       c.save(); c.globalAlpha = (u - 0.5) * 2 * (1 - fe);
@@ -1733,7 +1861,8 @@ function drawTrans(c, t) {
       if (fly <= 0) drawRing(c, poi.x, poi.y, poi.r, (u - 0.5) * 2);
     }
   }
-  if (t < 0.4) { c.fillStyle = `rgba(255,255,255,${1 - t / 0.4})`; c.fillRect(0, 0, W, H); }
+  // 白く光るのは水槽と上の帯まで（ボタンは白く飛ばさない）
+  if (t < 0.4) { c.fillStyle = `rgba(255,255,255,${0.8 * (1 - t / 0.4)})`; c.fillRect(0, 0, W, SHOP_Y); }
 }
 
 // ---------------------------------------------------------------- 終わり：宇宙を引くと、最初の縁日のたらいだった
