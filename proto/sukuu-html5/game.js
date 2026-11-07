@@ -5,7 +5,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- 設定
-const VERSION = 11;
+const VERSION = 12;
 const W = 720, H = 1280, TAU = Math.PI * 2;
 const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
@@ -202,7 +202,7 @@ for (const [k, ext, world] of ART) {
   im.src = 'assets/' + k + '.' + ext;
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
-for (const k of ['isl_small', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun']) {
+for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale']) {
   const im = new Image();
   im.onload = () => { IMG[k] = im; };
   im.src = 'assets/' + k + '.png';
@@ -644,7 +644,8 @@ const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
 // 一晩目の池は、最後の買い物から 15 秒たつと 1 秒 4% ずつ下がる（最低 3 割。批評 r10：初心者の買い物の間が 50 秒空いた）
-const buyAssist = () => (G.ng === 0 && G.k === 0 ? clamp(1 - (G.wt - (G.lastBuyT || 0) - 15) * 0.04, 0.3, 1) : 1);
+// 批評 r11：買い物の間が 33 秒空いた。12 秒から 1 秒 5% 値下げ（最低 3 割）
+const buyAssist = () => (G.ng === 0 && G.k === 0 ? clamp(1 - (G.wt - (G.lastBuyT || 0) - 12) * 0.05, 0.3, 1) : 1);
 const omake = () => Math.min(buyAssist(), clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0.4, 1));
 // 段ごとの主役の強化（安い）：池＝厚さ／海＝大きさ／大陸＝速乾／星＝厚さと速乾／宇宙＝大きさ。並びは [厚さ, 大きさ, 速乾]
 // 二晩目からは係数の並びを 1 つずつずらす（同じ買い方にならない）
@@ -822,8 +823,12 @@ function lift() {
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
   // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜130 秒で 1→3 倍）値段が上がる＝追いつける
   // 上限なし（批評 r10：130 秒以降、稼ぎが横ばい）
-  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 0.04 * Math.max(0, G.wt - 50) : 1;
-  const n = caught.length, m = mult(n) * (beginner() ? 2 : catchUp) * (n >= 4 ? 1 + perkN('bell') : 1);
+  // 批評 r11：12 すくい目で 2 倍が急に切れ、30〜60 秒の稼ぎが 46→19 に落ちた。
+  // 2 倍はその後の 25 すくいで少しずつ 1 倍へ（すくいの数で減るので、速い人にはすぐ切れる）
+  const firstPond = G.ng === 0 && G.k === 0;
+  const catchUp = firstPond ? 1 + 0.04 * Math.max(0, G.wt - 50) : 1;
+  const tail = firstPond ? clamp(2 - (G.scoops - 12) / 25, 1, 2) : 1;
+  const n = caught.length, m = mult(n) * Math.max(catchUp, tail) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);
   caught.forEach((f, i) => {
@@ -939,7 +944,9 @@ function update(dt) {
       poi.state = 'dip'; poi.dipT = 0; SFX.dip(); G.dips = (G.dips || 0) + 1;
       // 沈めた瞬間にポイの下にいた群れだけが入る（外の群れは流れ込まない＝見たとおりにすくえる）
       // はじめての人は、ポイの少し外にいた金魚も「入った」扱いにして寄せる（狙いが甘くてもすくえる）
-      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r * (1 + 0.6 * ease()) + (tiredOf(f) > 0.5 ? f.r * 0.6 : 0);
+      // 批評 r11：海に入った初心者が 23 秒すくえなかった。一晩目にしばらくすくえていない人は、もっと遠くの獲物も寄せる
+      const reach = poi.r * (1 + 0.6 * ease()) + 170 * slump();
+      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < reach + (tiredOf(f) > 0.5 ? f.r * 0.6 : 0);
       poi.strainSeen = 0;
       splash(poi.x, poi.y, 8, 0.7); rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 120, life: 0.6, t: 0, w: 5 });
     }
@@ -1436,6 +1443,16 @@ function drawKoi(c, f, r, sw, sw2, big) {
   for (const s of [-1, 1]) { c.beginPath(); c.moveTo(0.8 * r, s * 0.05 * r); c.lineTo(0.9 * r, s * 0.12 * r); c.stroke(); }
 }
 function drawWhale(c, f, r, sw) {
+  if (IMG.sp_whale) {
+    // 批評 r11：鯨が暗い塊に見えた。絵の鯨＋後ろに淡い光（深い青の海で輪郭が読めるように）
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.35;
+    c.drawImage(bokehSprite('rgba(140,210,255,A)'), -r * 1.15, -r * 0.8, r * 2.3, r * 1.6);
+    c.restore();
+    c.save(); c.rotate(sw * 0.04);
+    c.drawImage(IMG.sp_whale, -r * 1.05, -r * 0.7, r * 2.1, r * 1.4);
+    c.restore();
+    return;
+  }
   const fl = 0.75 + 0.25 * sw;
   c.fillStyle = '#26406a';
   c.save(); c.translate(-0.82 * r, 0); c.rotate(sw * 0.12);
@@ -1579,7 +1596,8 @@ function drawCreature(c, f, x, y, ang, sc, alpha) {
       c.beginPath(); c.arc(0, 0, hr, 0, TAU); c.stroke();
       c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.arc(0, 0, hr * 0.86, t, t + TAU); c.stroke(); c.setLineDash([]);
       c.globalCompositeOperation = 'source-over'; c.restore();
-      drawGoldfish(c, f, r * 0.42, sw, sw2, 'kin');
+      // 批評 r11：魚が画面幅の 10% しかなかった。輪いっぱいに描く（画面幅の 25% 以上）
+      drawGoldfish(c, f, r * 0.68, sw, sw2, 'kin');
     } else {
       c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -r * 1.4, -r * 1.4, r * 2.8, r * 2.8); c.globalCompositeOperation = 'source-over';
       drawGoldfish(c, f, r, sw, sw2, 'kin');
@@ -1614,10 +1632,17 @@ function drawIsland(c, f, r, t, kind) {
   const slip = f.slip > 0 ? Math.sin(t * 60) * 3 * f.slip : 0;
   c.translate(slip, 0);
   const R0 = kind === 'continent' ? r * 0.62 : kind === 'bigisland' ? r * 0.6 : r * 0.55;
-  if (IMG[ISLAND_ART[kind]]) {
-    // 絵の島：形ごとに向きを変える（同じ島が並んで見えないように）
-    c.save(); c.rotate((f.id * 2.399) % TAU);
-    sprite(c, ISLAND_ART[kind], R0 * 1.3);
+  // 小島は 3 種（ヤシの島・小屋の島・灯台の島）。小屋と灯台は向きを変えない
+  const smallVar = kind === 'island' ? f.id % 3 : 0;
+  const art = smallVar ? 'isl_small' + (smallVar + 1) : ISLAND_ART[kind];
+  if (IMG[art]) {
+    // 批評 r11：小さい島が緑の点に見えた。絵だけ大きく描く（すくえる大きさは変えない）
+    const half = kind === 'island' ? r * 1.05 : kind === 'volcano' ? r * 0.9 : kind === 'bigisland' ? r * 0.85 : R0 * 1.3;
+    c.save(); c.globalAlpha *= 0.45;
+    c.drawImage(bokehSprite('rgba(0,18,40,A)'), -half * 0.95 + half * 0.12, -half * 0.95 + half * 0.18, half * 1.9, half * 1.9);
+    c.restore();
+    c.save(); if (!smallVar) c.rotate((f.id * 2.399) % TAU);
+    sprite(c, art, half);
     c.restore();
     if (f.K.cloud) { c.globalAlpha *= 0.85; for (let i = 0; i < 4; i++) c.drawImage(bokehSprite('rgba(255,255,255,A)'), (i - 1.5) * R0 * 0.7 - R0 * 0.6, R0 * 0.55, R0 * 1.2, R0 * 0.7); c.globalAlpha /= 0.85; }
     return;
@@ -2095,8 +2120,8 @@ function drawShop(c) {
       text(c, ps2, 8, y + 151, 32, deny[i] > 0 ? '#ff4a3a' : can ? '#4a1e00' : '#ffd23a', can ? null : '#000', 6);
     }
     // おまけの札（値引き中）
-    if (!maxed && omake() < 1) {
-      c.save(); c.translate(x + b.w - 30, y + 14); c.rotate(0.18);
+    if (!maxed && Math.round((1 - omake()) * 100) >= 1) {
+      c.save(); c.translate(x + b.w - 50, y + 14); c.rotate(0.18);
       c.fillStyle = '#e8262a'; rr(c, -46, -16, 92, 32, 10); c.fill(); c.lineWidth = 2.5; c.strokeStyle = '#fff3c0'; c.stroke();
       text(c, 'おまけ -' + Math.round((1 - omake()) * 100) + '%', 0, 1, 16, '#ffffff', null, 0, 'center', '900');
       c.restore();
