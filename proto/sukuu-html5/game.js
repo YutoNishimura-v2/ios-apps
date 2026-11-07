@@ -188,7 +188,37 @@ function starDots(g, n, seed, x0, y0, w, h, amax) {
   for (let i = 0; i < n; i++) { const s = 0.6 + r() * 1.8; g.fillStyle = `rgba(255,255,255,${0.2 + r() * amax})`; g.fillRect(x0 + r() * w, y0 + r() * h, s, s); }
 }
 
+// gpt-image で作った絵（assets/）。読めたら池の背景を作り直す。読めないときは今までのコードの絵のまま
+const IMG = {};
+for (const k of ['pond_backdrop', 'pond_water']) {
+  const im = new Image();
+  im.onload = () => { IMG[k] = im; BGS[0] = null; };
+  im.src = 'assets/' + k + '.png';
+}
+function drawCover(g, im, x, y, w, h, ax, ay) {
+  const s = Math.max(w / im.width, h / im.height), dw = im.width * s, dh = im.height * s;
+  g.drawImage(im, x + (w - dw) * (ax === undefined ? 0.5 : ax), y + (h - dh) * (ay === undefined ? 0.5 : ay), dw, dh);
+}
+function buildPondArtBG() {
+  const c = mk(W, H), g = c.getContext('2d');
+  nightTop(g, '#0b0e26', '#1a1638', '#07060f');
+  // 上：提灯と夜店（絵の上の 1/6 を横いっぱいに）
+  const bd = IMG.pond_backdrop, sh = bd.height * 0.2;
+  g.drawImage(bd, 0, 0, bd.width, sh, 0, 0, W, W * sh / bd.width);
+  const fade = g.createLinearGradient(0, 120, 0, 200); fade.addColorStop(0, 'rgba(7,6,15,0)'); fade.addColorStop(1, 'rgba(7,6,15,0.9)');
+  g.fillStyle = fade; g.fillRect(0, 120, W, 80);
+  frame(g, '#174f9e', '#2f86e0', '#7cc8ff');
+  waterClip(g);
+  drawCover(g, IMG.pond_water, WATER.x, WATER.y, WATER.w, WATER.h);
+  // 魚が読めるよう、水を少し暗く・ふちを濃く
+  const vg = g.createRadialGradient(W / 2, WATER.y + WATER.h * 0.5, 120, W / 2, WATER.y + WATER.h * 0.5, WATER.h * 0.65);
+  vg.addColorStop(0, 'rgba(0,20,60,0.08)'); vg.addColorStop(1, 'rgba(0,15,50,0.45)');
+  g.fillStyle = vg; g.fillRect(WATER.x, WATER.y, WATER.w, WATER.h);
+  frameEnd(g, 'rgba(200,240,255,0.7)', 'rgba(5,30,70,0.35)');
+  return c;
+}
 function buildPondBG() {
+  if (IMG.pond_backdrop && IMG.pond_water) return buildPondArtBG();
   const c = mk(W, H), g = c.getContext('2d');
   nightTop(g, '#0b0e26', '#1a1638', '#07060f');
   const br = mulberry32(77);
