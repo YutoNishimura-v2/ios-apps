@@ -5,7 +5,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- 設定
-const VERSION = 10;
+const VERSION = 11;
 const W = 720, H = 1280, TAU = Math.PI * 2;
 const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
@@ -638,7 +638,7 @@ const press = [0, 0, 0], deny = [0, 0, 0], boughtFx = [0, 0, 0];
 const lvOf = i => G.lv[UPG[i].id];
 // 後の世界ほど少し高い（星・宇宙を駆け抜けて終わらないように）
 // 第8回：人の速さで各段 55〜70 秒・最後の段に 4 分過ぎに着くよう合わせた（sukuu_check.py sim --human seed 1〜3）
-const WORLD_PRICE = [3.3, 2.3, 1.8, 2.6, 3.3];
+const WORLD_PRICE = [3.3, 2.7, 1.8, 3.0, 6.5];
 const SWARM_AT = 24;
 // おまけ：段に入って 40 秒を過ぎると、夜店のおじさんが値引きしてくれる（1 秒 2.5%、最大 6 割引き）。1 つの段で足踏みしすぎない
 const OMAKE_T = 40;
@@ -727,7 +727,8 @@ function startWorld(k, first) {
     for (let i = 0; i < K.n; i++) makeFish(ki, B.x0 + 40 + rng() * (B.x1 - B.x0 - 80), B.y0 + 40 + rng() * (B.y1 - B.y0 - 80), false);
   });
   for (const f of fish) f.spawn = 1;
-  G.bossSpawnT = k === 0 ? 2.2 : 1.2; G.spawnT = 0; G.meteorT = 2; G.fastT = {};
+  // 宇宙のキンちゃんは山場として遅れて現れる（COSMOS.kin 秒）
+  G.bossSpawnT = k === 0 ? 2.2 : k === 4 ? COSMOS.kin : 1.2; G.kinCall = false; G.spawnT = 0; G.meteorT = 2; G.fastT = {};
   ev('world', { world: k, id: WD().id });
   seenOnce('world_' + k);
   if (!first) showBanner(G.ng > 0 && k === 0 ? NIGHT[Math.min(G.ng, NIGHT.length - 1)] + ' ご縁×' + ngMul() : WD().label, 2.2);
@@ -785,26 +786,35 @@ function lift() {
   for (const f of fish) f.hold = 0;
   splash(poi.x, poi.y, 10, 0.9);
   if (!caught.length) { poi.dripT = 0.3; return; }
-  let wsum = caught.reduce((s, f) => s + f.K.w, 0);
+  let wsum = caught.reduce((s, f) => s + wOf(f), 0);
   const hasBoss = caught.some(f => f.K.boss);
   // 守りが弱まる間は、少しの重すぎ（持てる重さの 1+1.5×ease 倍まで）なら破れずにこぼれる。
   // 1 匹だけで持てない魚（池の鯉など）も、守りの間はこぼれるだけ（「紙の厚さ」が要ると教える）
-  const oneTooHeavy = caught.length === 1 && caught[0].K.w > capEff();
+  const oneTooHeavy = caught.length === 1 && wOf(caught[0]) > capEff();
   const soft = ease() > 0 && (oneTooHeavy || wsum <= capEff() * (1 + 1.5 * ease()));
-  if (wsum > capEff() && (grace() || (!hasBoss && (beginner() || soft)))) {
-    if (!grace() && !beginner()) G.thickHint = 4;
+  // 群れ（6 匹以上）で少しの重すぎ（SPILL_MAX 倍まで）は、破れずに外側からあふれる（批評 r10：一度に 19〜20 匹失う）
+  const school = !hasBoss && caught.length >= 6 && wsum <= capEff() * SPILL_MAX;
+  if (wsum > capEff() && (grace() || school || (!hasBoss && (beginner() || soft)))) {
+    if (!grace() && !beginner() && !school) G.thickHint = 4;
     // 最初の 3 回（と最初の 12 すくいの間の重すぎ）は破れない：重いものからこぼれる（重さの仕組みだけ見せる）
-    caught.sort((a, b) => a.K.w - b.K.w);
-    while (caught.length && wsum > capEff()) { const f = caught.pop(); wsum -= f.K.w; f.slip = 0.6; f.flee = 1; splash(f.x, f.y, 10, 0.9); }
-    if (seenOnce('hint_heavy')) floatText('重すぎて こぼれた', poi.x, clamp(poi.y - poi.r - 40, 300, 1000), 54, '#ffffff', '#c01010', 1.6);
+    // 群れは縁に近いものからあふれる
+    if (school) caught.sort((a, b) => Math.hypot(a.x - poi.x, a.y - poi.y) - Math.hypot(b.x - poi.x, b.y - poi.y));
+    else caught.sort((a, b) => wOf(a) - wOf(b));
+    let nsp = 0;
+    while (caught.length && wsum > capEff()) { const f = caught.pop(); wsum -= wOf(f); f.slip = 0.6; f.flee = 1; splash(f.x, f.y, 10, 0.9); nsp++; }
+    ev('spill', { n: nsp, school });
+    if (school) { if (!G.banner) floatText('あふれた！ -' + nsp, poi.x, clamp(poi.y - poi.r - 40, 300, 1000), 58, '#ffe14a', '#8a2a00', 1.0); SFX.creak(); }
+    else if (seenOnce('hint_heavy')) floatText('重すぎて こぼれた', poi.x, clamp(poi.y - poi.r - 40, 300, 1000), 54, '#ffffff', '#c01010', 1.6);
     if (!caught.length) { poi.dripT = 0.3; return; }
   }
-  if (wsum > capEff()) { tear(caught, 'heavy'); return; }
+  if (wsum > capEff()) { tear(caught, 'heavy', wsum); return; }
+  G.lastScoopT = G.wt;
   poi.wet = Math.min(0.95, poi.wet + 0.08);
   poi.dripT = 0.8;
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
   // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜130 秒で 1→3 倍）値段が上がる＝追いつける
-  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 2 * clamp((G.wt - 50) / 80, 0, 1) : 1;
+  // 上限なし（批評 r10：130 秒以降、稼ぎが横ばい）
+  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 0.025 * Math.max(0, G.wt - 50) : 1;
   const n = caught.length, m = mult(n) * (beginner() ? 2 : catchUp) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);
@@ -835,13 +845,14 @@ function lift() {
   save();
 }
 const TOTAL_HOLD = 0.3, TOTAL_FLY = 0.35;
-function tear(caught, why) {
+const SPILL_MAX = 1.8;
+function tear(caught, why, wsum) {
   poi.state = 'torn'; poi.tearT = 0; G.tears++;
   const bossTear = (caught || []).some(f => f.K.boss);
   if (bossTear) BOTS.bossFails[G.k] = (BOTS.bossFails[G.k] || 0) + 1;
   // 人と同じく、重さで破ったら次は欲張りを控える（同じ失敗を何十回も続けない）
   else if (why === 'heavy') BOTS.greedK = Math.max(0.7, BOTS.greedK * 0.88);
-  ev('tear', { n: caught ? caught.length : 0, why, kinds: (caught || []).map(f => f.K.id), boss: bossTear });
+  ev('tear', { n: caught ? caught.length : 0, why, kinds: (caught || []).map(f => f.K.id), boss: bossTear, w: +(wsum || 0).toFixed(2), cap: +capEff().toFixed(2), wet: +poi.wet.toFixed(2) });
   addShake(14); SFX.rip();
   const a = rng() * Math.PI, jag = [];
   for (let i = 0; i <= 8; i++) jag.push([(i / 8) * 2 - 1, (rng() - 0.5) * 0.25]);
@@ -915,12 +926,13 @@ function update(dt) {
     poi.sink = Math.max(0, poi.sink - dt * 8);
     poi.wet = Math.max(0, poi.wet - 0.7 * dt);
     poi.burn = Math.max(0, poi.burn - 0.3 * dt);
-    poi.load = 0; poi.over = Math.max(0, poi.over - dt * 4);
+    poi.load = 0; poi.strain = 0; poi.over = Math.max(0, poi.over - dt * 4);
     if (input.down && !G.clear) {
       poi.state = 'dip'; poi.dipT = 0; SFX.dip(); G.dips = (G.dips || 0) + 1;
       // 沈めた瞬間にポイの下にいた群れだけが入る（外の群れは流れ込まない＝見たとおりにすくえる）
       // はじめての人は、ポイの少し外にいた金魚も「入った」扱いにして寄せる（狙いが甘くてもすくえる）
-      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r * (1 + 0.6 * ease());
+      for (const f of fish) f.inDip = Math.hypot(f.x - poi.x, f.y - poi.y) < poi.r * (1 + 0.6 * ease()) + (tiredOf(f) > 0.5 ? f.r * 0.6 : 0);
+      poi.strainSeen = 0;
       splash(poi.x, poi.y, 8, 0.7); rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 120, life: 0.6, t: 0, w: 5 });
     }
   } else if (poi.state === 'dip') {
@@ -931,15 +943,20 @@ function update(dt) {
     if (poi.heat > 0) poi.burn = Math.min(1, poi.burn + poi.heat * sdt * 0.8);
     if (poi.speed > 300 && frng() < 0.4) rings.push({ x: poi.x + R(-poi.r, poi.r), y: poi.y + R(-poi.r, poi.r), r: 4, vr: 90, life: 0.5, t: 0, w: 2 });
     const inside = fish.filter(f => f.spawn >= 1 && insidePoi(f));
-    poi.load = inside.reduce((s, f) => s + f.K.w, 0);
+    poi.load = inside.reduce((s, f) => s + wOf(f), 0);
     const over = poi.load > capEff();
+    // 限界の 75% を超えたら、破れる前に紙がきしむ（縁が黄→赤、ひび、ポイが震える）
+    poi.strain = clamp((poi.load / capEff() - 0.75) / 0.25, 0, 1);
+    if (poi.strain > 0.3 && !poi.strainSeen) { poi.strainSeen = 1; SFX.creak(); seenOnce('strain'); }
     if (over && poi.over < 0.5 && frng() < 0.08) SFX.creak();
     poi.over = over ? Math.min(1, poi.over + dt * 6) : Math.max(0, poi.over - dt * 6);
     if (V && V.on && V.gravity && Math.hypot(V.x - poi.x, V.y - poi.y) < V.core * 1.3) tear(inside, 'gravity');
     else if (poi.wet >= 0.97 && (grace() || !inside.length)) {
       // 何も入っていない（または最初の 3 回）は破らず、自動で上げる。理由を一度だけ出す
       poi.wet = 0.97; input.down = false; lift(); ev('soggy', { empty: !inside.length });
+      // 1 回目は濡れの理由、2 回目からは「何をすればよいか」を 8 秒おきに（批評 r10：理由が最初の 1 回しか出ない）
       if (seenOnce('hint_wet')) floatText('速く動かすと 紙がぬれる', poi.x, clamp(poi.y - poi.r - 40, 300, 1000), 50, '#bff4ff', '#0a3a6a', 2.0);
+      else if (!inside.length && G.realT - (G.wetHintT || 0) > 8 && !G.banner) { G.wetHintT = G.realT; floatText('魚の真上で 沈めて すぐ上げよう', poi.x, clamp(poi.y - poi.r - 40, 300, 1000), 46, '#bff4ff', '#0a3a6a', 1.8); }
     }
     else if (poi.wet >= 1) tear(inside, poi.heat > 0.3 ? 'burn' : 'wet');
     else if (!input.down) lift();
@@ -990,6 +1007,14 @@ function update(dt) {
       G.fastT[ki] = K.comet ? 7 + rng() * 4 : 1.6 + rng() * 2.2;
     }
   });
+  // 池の主が疲れてきた（一晩目の池に長くいる人だけ）
+  const bf = bossFish();
+  if (bf && tiredOf(bf) > 0.5 && seenOnce('boss_tired') && !G.banner) {
+    floatText('主が つかれてきた！', bf.x, clamp(bf.y - bf.r - 30, 300, 1000), 60, '#ffe14a', '#5a2a00', 1.6);
+    sparks(bf.x, bf.y, 20, '#bff4ff', 220);
+  }
+  // 宇宙の山場（批評 r10：宇宙が 33 秒で一番短い）。超新星 → 大群 → キンちゃん登場 → ブラックホールが暴れる
+  if (G.k === 4 && !G.clear) cosmosEvents();
   // 主
   if (!bossFish() && !G.clear) {
     G.bossSpawnT -= sdt;
@@ -997,7 +1022,12 @@ function update(dt) {
       const bi = WK().findIndex(K => K.boss);
       const f = spawnAt(bi, true);
       if (f && f.K.orbit && G.vortex) { f.orbA = rng() * TAU; f.x = G.vortex.x + Math.cos(f.orbA) * G.vortex.R0 * 0.7; f.y = G.vortex.y + Math.sin(f.orbA) * G.vortex.R0 * 0.7; }
-      ev('boss_appear', { kind: WK()[bi].id }); seenOnce('boss_' + G.k);
+      ev('boss_appear', { kind: WK()[bi].id });
+      if (seenOnce('boss_' + G.k) && G.k === 4 && f) {
+        G.flash = 0.5; addShake(20); rings.push({ x: f.x, y: f.y, r: 30, vr: 600, life: 1.1, t: 0, w: 14 }); sparks(f.x, f.y, 70, '#ffe14a', 480);
+        ev('kin_enter'); seenOnce('kin_enter');
+        if (!G.total) { texts.length = 0; showBanner('キンちゃんが 来た！', 1.8); }
+      }
       addShake(10); SFX.dip();
       G.bossSpawnT = 6;
     }
@@ -1023,6 +1053,27 @@ function update(dt) {
   if (G.wt >= OMAKE_T - 20 * perkN('fuku') && !G.clear) seenOnce('omake_' + G.k);
   if (!G.afforded && G.coins >=Math.min(price(0), price(1), price(2))) { G.afforded = true; ev('afford', { coins: G.coins }); }
   decay(dt);
+}
+const COSMOS = { nova: 12, kin: 34, rage: 48, rageLen: 10 };
+function cosmosEvents() {
+  const V = G.vortex;
+  if (G.wt >= COSMOS.nova && seenOnce('supernova')) {
+    // 超新星：光って、金色の銀河（2 倍）が 10 個生まれる
+    const ki = WK().findIndex(K => K.school), x = lerp(B.x0 + 150, B.x1 - 150, rng()), y = lerp(B.y0 + 520, B.y1 - 150, rng());
+    for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; const f = makeFish(ki, x + Math.cos(a) * 40, y + Math.sin(a) * 40, true); f.swarm = 1; f.vx = Math.cos(a) * 200; f.vy = Math.sin(a) * 200; }
+    G.flash = 0.6; addShake(14); rings.push({ x, y, r: 10, vr: 700, life: 1.0, t: 0, w: 16 }); sparks(x, y, 60, '#fff3b0', 520); SFX.boom();
+    ev('supernova');
+    if (!G.banner && !G.total) floatText('超新星！', x, clamp(y - 140, 300, 1000), 84, '#fff3b0', '#5a1a6a', 1.1);
+  }
+  if (G.wt >= COSMOS.kin - 3 && !G.kinCall && !bossFish()) {
+    // キンちゃんが来る前触れ：画面が金色に揺れる
+    G.kinCall = true; addShake(8); SFX.unlock();
+  }
+  if (V && G.wt >= COSMOS.rage && G.wt < COSMOS.rage + COSMOS.rageLen) {
+    // ブラックホールが暴れる：吸い込みの輪が広がる（渦の中の銀河を救うと 2 倍）
+    if (seenOnce('bh_rage')) { ev('bh_rage'); addShake(16); SFX.boom(); if (!G.banner && !G.total) floatText('ブラックホールが 暴れだした！', W / 2, clamp(V.y - V.R - 40, 300, 1000), 52, '#ffd0ff', '#3a0a5a', 1.4); }
+    V.R = V.R0 * (1.3 + 0.08 * Math.sin(G.wt * 5));
+  }
 }
 function updateFlyers(sdt) {
   for (let i = flyers.length - 1; i >= 0; i--) {
@@ -1117,7 +1168,9 @@ function updateFish(dt) {
     }
     // 逃げる（沈めたポイの近く）
     const dx = f.x - poi.x, dy = f.y - poi.y, d = Math.hypot(dx, dy) || 1, range = poi.r + 110 + f.r;
-    const helped = f.inDip && !K.boss && K.w <= cap() && ease() > 0.3;
+    // 疲れた池の主（tiredOf>0.5）も、持てる重さなら寄ってくる
+    const tired = tiredOf(f);
+    const helped = f.inDip && wOf(f) <= cap() && (K.boss ? tired > 0.5 : ease() > 0.3);
     if (helped && dip && !insidePoi(f)) { fx -= dx / d * 900; fy -= dy / d * 900; }
     if (dip && d < range && !K.root && !helped) {
       if (f.alert < 0) f.alert = 0.16 + rng() * 0.3 + (K.school ? 0 : 0.08) + (K.boss ? 0.15 : 0);
@@ -1140,8 +1193,8 @@ function updateFish(dt) {
     }
     f.vx += fx * dt; f.vy += fy * dt;
     // はじめての人：沈めたポイの上にいる金魚は、紙の上でゆっくりになる（見たとおりにすくえる）
-    const rest = dip && helped && insidePoi(f);
-    const sp = Math.hypot(f.vx, f.vy) || 1, mx = K.spd * (rest ? 0.2 : (1 + f.flee * 1.8) * (f.danger ? 1.6 : 1)), mn = K.spd * (rest ? 0.05 : 0.3);
+    const rest = dip && helped && insidePoi(f), pulled = dip && helped && !rest;
+    const sp = Math.hypot(f.vx, f.vy) || 1, mx = pulled ? Math.max(K.spd, 240) : K.spd * (1 - 0.5 * tired) * (rest ? 0.2 : (1 + f.flee * 1.8) * (f.danger ? 1.6 : 1)), mn = K.spd * (rest ? 0.05 : 0.3);
     if (sp > mx) { f.vx *= mx / sp; f.vy *= mx / sp; } else if (sp < mn) { f.vx *= mn / sp; f.vy *= mn / sp; }
     f.x += f.vx * dt; f.y += f.vy * dt;
     f.x = clamp(f.x, B.x0 + f.r * 0.5, B.x1 - f.r * 0.5); f.y = clamp(f.y, B.y0 + f.r * 0.5, B.y1 - f.r * 0.5);
@@ -1510,14 +1563,15 @@ function drawCreature(c, f, x, y, ang, sc, alpha) {
   else if (d === 'kin') {
     if (f.K.halo) {
       // 光の輪（この輪ごとすくう）。中のキンちゃんは小さめ
-      const hr = r * 0.6;
+      // 輪は大きさ Lv2 のポイとほぼ同じ大きさ（画面幅の 30% 以上。批評 r10：山場が弱い）
+      const hr = r * 0.74;
       c.save(); c.rotate(-ang); c.globalCompositeOperation = 'lighter';
       c.globalAlpha = alpha * 0.55; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -hr * 1.3, -hr * 1.3, hr * 2.6, hr * 2.6);
       c.globalAlpha = alpha; c.strokeStyle = `rgba(255,225,120,${0.75 + 0.2 * Math.sin(t * 4)})`; c.lineWidth = 5;
       c.beginPath(); c.arc(0, 0, hr, 0, TAU); c.stroke();
       c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.arc(0, 0, hr * 0.86, t, t + TAU); c.stroke(); c.setLineDash([]);
       c.globalCompositeOperation = 'source-over'; c.restore();
-      drawGoldfish(c, f, r * 0.3, sw, sw2, 'kin');
+      drawGoldfish(c, f, r * 0.42, sw, sw2, 'kin');
     } else {
       c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -r * 1.4, -r * 1.4, r * 2.8, r * 2.8); c.globalCompositeOperation = 'source-over';
       drawGoldfish(c, f, r, sw, sw2, 'kin');
@@ -1767,6 +1821,20 @@ function renderScene(c, hud) {
     const u = clamp(poi.tearT / 0.6, 0, 1);
     drawRing(c, px + u * 30, py + u * 50, pr * (1 - u * 0.1), 1 - u);
   } else if (dipped) {
+    // 限界に近い：ポイが震え、縁の外に黄→赤の輪、紙にひびが走る（破れる前の合図）
+    const st = poi.strain || 0;
+    if (st > 0) {
+      px += Math.sin(G.realT * 70) * 3 * st; py += Math.cos(G.realT * 63) * 2 * st;
+      c.strokeStyle = `rgba(255,${Math.round(lerp(210, 60, st))},40,${0.55 + 0.35 * st})`; c.lineWidth = 6 + 6 * st;
+      c.beginPath(); c.arc(px, py, pr + 10, 0, TAU); c.stroke();
+      c.strokeStyle = `rgba(120,20,10,${0.35 + 0.5 * st})`; c.lineCap = 'round';
+      for (let i = 0; i < poi.cracks.length && i < 1 + st * 5; i++) {
+        const pts = poi.cracks[i]; c.lineWidth = 3;
+        c.beginPath(); c.moveTo(px + pts[0][0] * pr, py + pts[0][1] * pr);
+        for (let k2 = 1; k2 < pts.length; k2++) c.lineTo(px + pts[k2][0] * pr, py + pts[k2][1] * pr);
+        c.stroke();
+      }
+    }
     c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 3;
     c.beginPath(); c.arc(px, py, pr + 6 + Math.sin(G.realT * 12) * 2, 0, TAU); c.stroke();
     // 重すぎると縁が赤く脈打つ（このまま上げると破れる）
