@@ -1,0 +1,17 @@
+{
+  "size": "1024x1024",
+  "ms": 24695,
+  "usage": {
+    "input_tokens": 75,
+    "input_tokens_details": {
+      "image_tokens": 0,
+      "text_tokens": 75
+    },
+    "output_tokens": 1449,
+    "output_tokens_details": {
+      "image_tokens": 1449,
+      "text_tokens": 0
+    },
+    "total_tokens": 1524
+  }
+}

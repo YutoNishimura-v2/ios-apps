@@ -201,6 +201,20 @@ for (const [k, ext, world] of ART) {
   im.onload = () => { IMG[k] = im; BGS[world] = null; };
   im.src = 'assets/' + k + '.' + ext;
 }
+// 獲物の絵（透過 png）。読めないときはコードの絵
+for (const k of ['isl_small', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun']) {
+  const im = new Image();
+  im.onload = () => { IMG[k] = im; };
+  im.src = 'assets/' + k + '.png';
+}
+const ISLAND_ART = { island: 'isl_small', volcano: 'isl_volcano', bigisland: 'isl_big', continent: 'isl_continent' };
+// 絵を中心 (0,0) に、半径 half の正方形で描く
+function sprite(c, key, half) {
+  const im = IMG[key];
+  if (!im) return false;
+  c.drawImage(im, -half, -half, half * 2, half * 2);
+  return true;
+}
 // 段の水（空）を絵で塗る。絵が読めていなければ false を返し、呼び側はコードの絵を描く
 function artWater(g, key, shade) {
   const im = IMG[key];
@@ -502,13 +516,22 @@ const grace = () => G.ng === 0 && G.k === 0 && (G.dips || 0) <= 3;
 const beginner = () => G.ng === 0 && G.k === 0 && G.scoops < 12;
 // 守りは一度に切らず、一晩目の池の EASE_FROM〜EASE_TO 秒で少しずつ弱める（1 → 0）。批評 r9：守りが切れた直後に 13 秒で 5 回破れた
 const EASE_FROM = 60, EASE_TO = 170;
+// 批評 r10：時間だけで守りを 0 にすると、すくえない人が 44 秒止まった。
+// 一晩目は、しばらくすくえていない人にだけ守りを戻す（SLUMP_FROM 秒すくえないと効き始め、SLUMP_LEN 秒で全部）
+const SLUMP_FROM = 5, SLUMP_LEN = 5;
+const slump = () => (G.ng === 0 ? clamp((G.wt - (G.lastScoopT || 0) - SLUMP_FROM) / SLUMP_LEN, 0, 1) : 0);
 const ease = () => {
-  if (G.ng !== 0 || G.k !== 0) return 0;
+  if (G.ng !== 0) return 0;
+  if (G.k !== 0) return slump();
   if (beginner()) return 1;
-  return clamp((EASE_TO - G.wt) / (EASE_TO - EASE_FROM), 0, 1);
+  return Math.max(slump(), clamp((EASE_TO - G.wt) / (EASE_TO - EASE_FROM), 0, 1));
 };
+// 一晩目の池に長くいると、池の主が疲れてくる（軽くなり、逃げずにポイへ寄る）。速い人には効かない
+const TIRED_FROM = 105, TIRED_LEN = 45;
+const tiredOf = f => (f.K.boss && G.ng === 0 && G.k === 0 ? clamp((G.wt - TIRED_FROM) / TIRED_LEN, 0, 1) : 0);
+const wOf = f => f.K.w * (1 - 0.62 * tiredOf(f));
 function insidePoi(f) { return Math.hypot(f.x - poi.x, f.y - poi.y) + f.r * 0.55 <= poi.r * 0.98; }
-const tooHeavy = f => f.K.w > cap() + 1e-6;
+const tooHeavy = f => wOf(f) > cap() + 1e-6;
 // 枠に入りきらない（ポイの大きさが要る）
 const fitsLv = (K, lv) => K.r * 0.55 + 15 <= radOf(lv) * 0.98;
 const tooBig = f => !fitsLv(f.K, G.lv.s);
@@ -689,7 +712,7 @@ function offerPerks() {
 }
 function perkCardRect(i) { return { x: 22 + i * 230, y: 800, w: 216, h: 250 }; }
 function startWorld(k, first) {
-  G.k = k; G.wt = 0; G.lv = { t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
+  G.k = k; G.wt = 0; G.lastScoopT = 0; G.lv ={ t: perkN('thick'), s: perkN('size'), d: perkN('dry') };
   KINDS = WORLDS[k].kinds.filter(K => !K.ng || G.ng >= K.ng);
   G.rareAt = 5; G.swarmAt = SWARM_AT;
   BOTS.greedK = HUMAN ? 1.08 : 0.95;
@@ -1426,10 +1449,17 @@ function drawMeteor(c, f, r) {
 function drawPlanet(c, f, r, t, x, y) {
   const [c1, c2] = PLANET_COLS[f.var % PLANET_COLS.length], pr = r * 0.55;
   if (f.ring) { c.save(); c.rotate(f.tilt); c.strokeStyle = 'rgba(230,220,190,0.55)'; c.lineWidth = r * 0.07; c.beginPath(); c.ellipse(0, 0, pr * 1.7, pr * 0.45, 0, Math.PI, TAU); c.stroke(); c.restore(); }
-  const g = c.createRadialGradient(-pr * 0.35, -pr * 0.35, pr * 0.1, 0, 0, pr); g.addColorStop(0, c1); g.addColorStop(1, c2);
-  c.fillStyle = g; c.beginPath(); c.arc(0, 0, pr, 0, TAU); c.fill();
-  c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,0.12)'; for (let i = -2; i <= 2; i++) c.fillRect(-pr, i * pr * 0.32 - pr * 0.06 + Math.sin(t + i) * 2, pr * 2, pr * 0.12);
-  c.fillStyle = 'rgba(0,0,20,0.35)'; c.beginPath(); c.arc(pr * 0.35, pr * 0.35, pr, 0, TAU); c.fill(); c.restore();
+  if (IMG.sp_planet) {
+    // 絵の惑星。色は種類ごとに色相だけ変える（1 つ目は絵のままの橙）
+    c.save(); c.rotate(f.var * 1.1 + (f.tilt || 0)); sprite(c, 'sp_planet', pr * 1.04);
+    if (f.var % PLANET_COLS.length) { c.beginPath(); c.arc(0, 0, pr * 0.98, 0, TAU); c.clip(); c.globalCompositeOperation = 'hue'; c.fillStyle = c1; c.fillRect(-pr, -pr, pr * 2, pr * 2); }
+    c.restore();
+  } else {
+    const g = c.createRadialGradient(-pr * 0.35, -pr * 0.35, pr * 0.1, 0, 0, pr); g.addColorStop(0, c1); g.addColorStop(1, c2);
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, pr, 0, TAU); c.fill();
+    c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,0.12)'; for (let i = -2; i <= 2; i++) c.fillRect(-pr, i * pr * 0.32 - pr * 0.06 + Math.sin(t + i) * 2, pr * 2, pr * 0.12);
+    c.fillStyle = 'rgba(0,0,20,0.35)'; c.beginPath(); c.arc(pr * 0.35, pr * 0.35, pr, 0, TAU); c.fill(); c.restore();
+  }
   if (f.ring) { c.save(); c.rotate(f.tilt); c.strokeStyle = 'rgba(240,230,200,0.75)'; c.lineWidth = r * 0.07; c.beginPath(); c.ellipse(0, 0, pr * 1.7, pr * 0.45, 0, 0, Math.PI); c.stroke(); c.restore(); }
 }
 function drawSun(c, f, r, t) {
@@ -1437,12 +1467,17 @@ function drawSun(c, f, r, t) {
   const s = 1 + 0.05 * Math.sin(t * 5);
   c.globalAlpha *= 0.8; c.drawImage(bokehSprite('rgba(255,150,40,A)'), -r * 1.6 * s, -r * 1.6 * s, r * 3.2 * s, r * 3.2 * s); c.globalAlpha /= 0.8;
   c.globalCompositeOperation = 'source-over';
+  if (IMG.sp_sun) { c.save(); c.rotate(t * 0.15); sprite(c, 'sp_sun', r * 0.8 * s); c.restore(); return; }
   const g = c.createRadialGradient(-r * 0.15, -r * 0.15, r * 0.05, 0, 0, r * 0.6); g.addColorStop(0, '#fffbe0'); g.addColorStop(0.5, '#ffd040'); g.addColorStop(1, '#ff7a10');
   c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * 0.6, 0, TAU); c.fill();
   c.fillStyle = 'rgba(255,120,20,0.35)'; for (let i = 0; i < 5; i++) { const a = t * 0.3 + i * 1.3; c.beginPath(); c.arc(Math.cos(a) * r * 0.3, Math.sin(a * 1.3) * r * 0.25, r * 0.08, 0, TAU); c.fill(); }
 }
 function drawGalaxy(c, f, r, t) {
   c.rotate(f.spin + t * 0.6);
+  if (IMG.sp_galaxy) {
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.5; c.drawImage(bokehSprite('rgba(140,220,255,A)'), -r, -r, r * 2, r * 2); c.globalAlpha /= 0.5; c.globalCompositeOperation = 'source-over';
+    sprite(c, 'sp_galaxy', r * 0.95); return;
+  }
   c.globalCompositeOperation = 'lighter';
   // 背景（紫）と見分けやすいよう、銀河は水色と白
   c.drawImage(bokehSprite('rgba(140,220,255,A)'), -r * 0.9, -r * 0.9, r * 1.8, r * 1.8);
@@ -1455,6 +1490,7 @@ function drawGalaxy(c, f, r, t) {
   c.globalCompositeOperation = 'source-over';
 }
 function drawNebula(c, f, r, t) {
+  if (IMG.sp_nebula) { c.save(); c.rotate(f.spin + t * 0.1); const s = 1 + 0.04 * Math.sin(t * 2 + f.id); sprite(c, 'sp_nebula', r * 0.85 * s); c.restore(); return; }
   c.globalCompositeOperation = 'lighter';
   const cols = ['rgba(120,90,255,A)', 'rgba(255,90,180,A)', 'rgba(70,210,230,A)'];
   for (let i = 0; i < 4; i++) { const a = i * 1.7 + t * 0.2 + f.spin, d = r * 0.3, s = r * (1.0 + 0.2 * Math.sin(t + i)); c.globalAlpha = 0.5; c.drawImage(bokehSprite(cols[(i + f.var) % 3]), Math.cos(a) * d - s / 2, Math.sin(a) * d - s / 2, s, s); }
@@ -1516,6 +1552,14 @@ function drawIsland(c, f, r, t, kind) {
   const slip = f.slip > 0 ? Math.sin(t * 60) * 3 * f.slip : 0;
   c.translate(slip, 0);
   const R0 = kind === 'continent' ? r * 0.62 : kind === 'bigisland' ? r * 0.6 : r * 0.55;
+  if (IMG[ISLAND_ART[kind]]) {
+    // 絵の島：形ごとに向きを変える（同じ島が並んで見えないように）
+    c.save(); c.rotate((f.id * 2.399) % TAU);
+    sprite(c, ISLAND_ART[kind], R0 * 1.3);
+    c.restore();
+    if (f.K.cloud) { c.globalAlpha *= 0.85; for (let i = 0; i < 4; i++) c.drawImage(bokehSprite('rgba(255,255,255,A)'), (i - 1.5) * R0 * 0.7 - R0 * 0.6, R0 * 0.55, R0 * 1.2, R0 * 0.7); c.globalAlpha /= 0.85; }
+    return;
+  }
   // 浅瀬
   c.fillStyle = 'rgba(120,230,230,0.35)'; blob(c, R0 * 1.25, f.id * 7 + 1, 14, 0.18); c.fill();
   // 砂浜
