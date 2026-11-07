@@ -52,6 +52,10 @@ def open_page(p, extra):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(url(extra))
     page.wait_for_timeout(500)
+    try:
+        page.wait_for_function("() => !window.__artReady || window.__artReady()", timeout=10000)
+    except Exception:  # noqa: BLE001 - 待ちきれなくても続けるが、記録に残す
+        errors.append("art not ready after 10s")
     return browser, page, errors
 
 

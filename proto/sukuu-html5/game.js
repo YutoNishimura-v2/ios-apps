@@ -211,11 +211,33 @@ function shrinkImage(im, maxSide) {
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
   return cv;
 }
-for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_small4', 'isl_small5', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body', 'demekin_body', 'demekin_red_body', 'kin_tail', 'sp_koi', 'sp_bigkoi', 'sp_tai', 'sp_kame']) {
-  const im = new Image();
-  im.onload = () => { IMG[k] = shrinkImage(im, SPRITE_MAX[k] || 384); };
-  im.src = 'assets/' + k + '.png';
+// 批評 r13：島が「丸いシール」に見えた（浅瀬の縁がくっきりした円）。外側 3 割を透かして海になじませる
+function featherEdge(src) {
+  const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+  const g = cv.getContext('2d'), cx = cv.width / 2, cy = cv.height / 2, R0 = Math.min(cx, cy);
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createRadialGradient(cx, cy, R0 * 0.62, cx, cy, R0 * 0.98);
+  m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.55, 'rgba(0,0,0,0.6)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, cv.width, cv.height);
+  return cv;
 }
+// 批評 r13：批評役の回でキンちゃんの絵が読めず、コードの絵（淡い黄色の塊）で採点された。
+// 縮めた絵（assets/s/、tools/proto/sukuu_shrink_sprites.py で作る。全部で 3.3MB）を読み、失敗したら元の絵で読み直す。
+// 全部そろったら ev('art_ready')、読めなかった絵は ev('art_fail')。window.__artReady() で待てる
+const SPRITES = ['isl_small', 'isl_small2', 'isl_small3', 'isl_small4', 'isl_small5', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body', 'demekin_body', 'demekin_red_body', 'kin_tail', 'sp_koi', 'sp_bigkoi', 'sp_tai', 'sp_kame'];
+const ART_SRC = k => ['assets/s/' + k + '.png', 'assets/s/' + k + '.png?r=1', 'assets/' + k + '.png'];
+let artDone = 0;
+const artReady = () => artDone >= SPRITES.length;
+window.__artReady = artReady;
+function loadSprite(k, attempt) {
+  const im = new Image();
+  const settle = ok => { artDone++; if (!ok) ev('art_fail', { k }); if (artReady()) ev('art_ready', { failed: SPRITES.filter(s => !IMG[s]).length }); };
+  im.onload = () => { const s = shrinkImage(im, SPRITE_MAX[k] || 384); IMG[k] = k.startsWith('isl_small') || k === 'isl_volcano' ? featherEdge(s) : s; settle(true); };
+  im.onerror = () => { const srcs = ART_SRC(k); if (attempt + 1 < srcs.length) setTimeout(() => loadSprite(k, attempt + 1), 300); else settle(false); };
+  im.src = ART_SRC(k)[attempt];
+}
+for (const k of SPRITES) loadSprite(k, 0);
 const ISLAND_ART = { island: 'isl_small', volcano: 'isl_volcano', bigisland: 'isl_big', continent: 'isl_continent' };
 // 絵を中心 (0,0) に、半径 half の正方形で描く
 function sprite(c, key, half) {
@@ -584,7 +606,11 @@ const SFX = {
 };
 
 // ---------------------------------------------------------------- エフェクト
+// 星と宇宙のしぶき（星くず）の色
+const DUST_COLS = ['#ffe9a8', '#c9b6ff', '#9fe6ff', '#ffc2ec'];
 function splash(x, y, n, power, col) {
+  // 批評 r13：白い泡が重なりすぎた → 粒は 6 割に
+  n = Math.ceil(n * 0.6);
   if (parts.length + n > PARTS_CAP) parts.splice(0, parts.length + n - PARTS_CAP);
   const dc = G.k >= 2 ? '#d8dcff' : '#ffffff';
   for (let i = 0; i < n; i++) {
@@ -599,6 +625,32 @@ function sparks(x, y, n, col, spd) {
     const a = R(0, TAU), s = R(0.3, 1) * (spd || 360);
     parts.push({ k: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, s: R(3, 7), c: col || '#ffe14a', life: R(0.35, 0.7), t: 0, rot: R(0, 6) });
   }
+}
+// 批評 r13：「+数字」が魚や主にかかった。ポイの上・下・左右から、文字の箱に入る獲物がいちばん少ない所を選ぶ（主は 10 匹分に数える）
+function textHits(x, y, hw, hh) {
+  let n = 0;
+  for (const f of fish) {
+    if (f.spawn < 1) continue;
+    const m = f.r * 0.45;
+    if (Math.abs(f.x - x) < hw + m && Math.abs(f.y - y) < hh + m) n += f.K.boss ? 10 : 1;
+  }
+  return n;
+}
+function totalPos(target) {
+  const base = 84 + Math.min(56, Math.log10(target + 1) * 10);
+  const hw = (('+' + fmt(target)).length * 0.62 + 0.24) * base / 2, hh = base * 0.55;
+  const minY = 300, maxY = Math.min(1000, WATER.y + WATER.h - hh);
+  const up = poi.y - poi.r - 70, dn = poi.y + poi.r + 80, sx = poi.r + hw;
+  const cands = [[poi.x, up], [poi.x, dn], [poi.x - sx, poi.y], [poi.x + sx, poi.y], [poi.x, up - 2.2 * hh], [poi.x, dn + 2.2 * hh],
+    [poi.x - sx * 0.8, up], [poi.x + sx * 0.8, up], [poi.x - sx * 0.8, dn], [poi.x + sx * 0.8, dn]];
+  let best = null;
+  cands.forEach(([x0, y0], i) => {
+    const x = clamp(x0, WATER.x + hw, WATER.x + WATER.w - hw), y = clamp(y0, minY, maxY);
+    // 近いほど良い（同じ数ならポイの上を選ぶ）
+    const s = textHits(x, y, hw, hh) * 100 + i;
+    if (!best || s < best.s) best = { x, y, s, hits: textHits(x, y, hw, hh) };
+  });
+  return best;
 }
 function floatText(s, x, y, size, fill, stroke, life, rot) { texts.length = 0; texts.push({ s, x, y, size, fill, stroke, life: life || 0.9, t: 0, rot: rot || 0 }); }
 function addShake(m) { G.shake = Math.max(G.shake, m); }
@@ -779,7 +831,7 @@ function bossCaught(f) {
   G.flash = 1; addShake(36); G.slowmo = 0.6;
   // 池の水が全部はね上がる
   // 水しぶきは水槽の中だけ（上の数字を隠さない。描くときも水槽の上で切る）
-  const nd = 140;
+  const nd = 70;
   if (parts.length + nd > PARTS_CAP) parts.splice(0, parts.length + nd - PARTS_CAP);
   for (let i = 0; i < nd; i++) {
     const x = WATER.x + R(0, WATER.w), y = WATER.y + 120 + R(0, WATER.h - 120), dx = x - poi.x, dy = y - poi.y, d = Math.hypot(dx, dy) + 1;
@@ -901,8 +953,9 @@ function lift() {
   poi.squash = 1;
   splash(poi.x, poi.y, 26 + Math.min(40, n * 4), 1.5 + Math.min(1.5, n * 0.1));
   G.hitstop = n >= 3 ? 0.08 : 0.04;
-  const top = poi.y - poi.r - 70 > 300;
-  G.total = G.banner ? null : { target: total, x: clamp(poi.x, 200, W - 200), y: top ? poi.y - poi.r - 70 : poi.y + poi.r + 80, t: 0, rescue: rescue > 0 };
+  const tp = totalPos(total);
+  G.total = G.banner ? null : { target: total, x: tp.x, y: tp.y, t: 0, rescue: rescue > 0, hits: tp.hits };
+  if (G.total) ev('total_pos', { hits: tp.hits });
   texts.length = 0;
   if (n >= 3) SFX.combo(n);
   SFX.plop(0);
@@ -1758,9 +1811,11 @@ function drawIsland(c, f, r, t, kind) {
   const art = smallVar ? 'isl_small' + (smallVar + 1) : ISLAND_ART[kind];
   if (IMG[art]) {
     // 批評 r11：小さい島が緑の点に見えた。絵だけ大きく描く（すくえる大きさは変えない）
-    const half = kind === 'island' ? r * 1.05 : kind === 'volcano' ? r * 0.9 : kind === 'bigisland' ? r * 0.85 : R0 * 1.3;
-    c.save(); c.globalAlpha *= 0.45;
-    c.drawImage(bokehSprite('rgba(0,18,40,A)'), -half * 0.95 + half * 0.12, -half * 0.95 + half * 0.18, half * 1.9, half * 1.9);
+    // 批評 r13 の前提なしの採点：島が小さくまばら → 小島と火山の絵をもう 3 割大きく（縁は透けるので重なってもなじむ）
+    const half = kind === 'island' ? r * 1.38 : kind === 'volcano' ? r * 1.2 : kind === 'bigisland' ? r * 0.95 : R0 * 1.4;
+    // 批評 r13：暗い影で島が浮いたシールに見えた → 浅瀬の淡い光で海に沈める
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.3;
+    c.drawImage(bokehSprite('rgba(60,220,210,A)'), -half * 1.25, -half * 1.15, half * 2.5, half * 2.3);
     c.restore();
     c.save(); c.rotate(smallVar ? ((f.id * 0.77) % 0.7) - 0.35 : (f.id * 2.399) % TAU);
     sprite(c, art, half);
@@ -1897,6 +1952,27 @@ function render() {
   if (G.trans) { const ps = poi.state; if (G.trans.from === 2) poi.state = 'snap'; renderScene(offCtx, false); poi.state = ps; drawTrans(ctx, G.trans.t); drawHUD(ctx); drawShop(ctx); return; }
   renderScene(ctx, true);
 }
+// 批評 r13：海の暗い所が広く何もない → 上から差す光の筋と、ゆっくり漂う光の粒（加算。乱数は使わない＝遊びは変えない）
+function drawSeaLight(c, t) {
+  for (let i = 0; i < 5; i++) {
+    const x = WATER.x + WATER.w * (0.08 + i * 0.21) + Math.sin(t * 0.25 + i * 1.9) * 30, w = 70 + (i % 3) * 30;
+    c.save(); c.translate(x, WATER.y - 20); c.rotate(0.28 + Math.sin(t * 0.2 + i) * 0.04);
+    const g = c.createLinearGradient(0, 0, 0, WATER.h * 0.95);
+    const a = 0.1 + 0.05 * Math.sin(t * 0.7 + i * 2.3);
+    g.addColorStop(0, `rgba(170,240,255,${a})`); g.addColorStop(1, 'rgba(170,240,255,0)');
+    c.globalAlpha = 1; c.fillStyle = g;
+    c.beginPath(); c.moveTo(-w * 0.3, 0); c.lineTo(w * 0.3, 0); c.lineTo(w, WATER.h * 0.95); c.lineTo(-w, WATER.h * 0.95); c.closePath(); c.fill();
+    c.restore();
+  }
+  c.fillStyle = 'rgba(200,250,255,1)';
+  for (let i = 0; i < 46; i++) {
+    const sx = (i * 137.5) % WATER.w, sy = (i * 211.3 - t * (8 + i % 5 * 3)) % WATER.h;
+    const x = WATER.x + sx + Math.sin(t * 0.8 + i) * 8, y = WATER.y + (sy < 0 ? sy + WATER.h : sy);
+    c.globalAlpha = 0.18 + 0.22 * Math.abs(Math.sin(t * 1.3 + i * 0.7));
+    c.beginPath(); c.arc(x, y, 1.2 + (i % 3) * 0.7, 0, TAU); c.fill();
+  }
+  c.globalAlpha = 1;
+}
 function renderScene(c, hud) {
   const t = G.simT, V = G.vortex, id = WD().id;
   c.setTransform(1, 0, 0, 1, 0, 0);
@@ -1918,6 +1994,7 @@ function renderScene(c, hud) {
         c.drawImage(bokehSprite('rgba(255,160,70,A)'), x - 34, y - 20, 68, 210);
       }
     }
+    if (id === 'sea' || id === 'land') drawSeaLight(c, t);
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     if (id === 'pond') {
       // 縁へ向かって深く暗く（水の深さ）
@@ -2021,7 +2098,9 @@ function renderScene(c, hud) {
     const sx = 1 + 0.16 * wob, sy = 1 - 0.22 * wob;
     c.fillStyle = 'rgba(0,30,60,0.25)'; c.beginPath(); c.ellipse(px + 16, py + 26, pr * lift * sx, pr * lift * sy, 0, 0, TAU); c.fill();
     c.save(); c.translate(px, py); c.scale(sx, sy); c.translate(-px, -py);
-    drawPaper(c, px, py, pr * lift, pr > 120 ? lerp(0.85, 0.5, clamp((pr - 120) / 120, 0, 1)) : 1);
+    // 批評 r13：捕る直前のキンちゃんがポイの紙に隠れた → 主に重なっている間は紙を薄く
+    const overBoss = boss && Math.hypot(boss.x - px, boss.y - py) < pr + boss.r * 0.6 ? 0.45 : 1;
+    drawPaper(c, px, py, pr * lift, (pr > 120 ? lerp(0.85, 0.5, clamp((pr - 120) / 120, 0, 1)) : 1) * overBoss);
     if (k > 0) { const g = c.createRadialGradient(px, py, 0, px, py, pr * 0.9); g.addColorStop(0, `rgba(30,80,120,${0.35 * k})`); g.addColorStop(1, 'rgba(30,80,120,0)'); c.fillStyle = g; c.beginPath(); c.arc(px, py, pr * 0.95, 0, TAU); c.fill(); }
     drawRing(c, px, py, pr * lift, 1);
     if (poi.glow > 0) { c.globalAlpha = poi.glow; c.lineWidth = 14; c.strokeStyle = '#fff6a0'; c.beginPath(); c.arc(px, py, pr * lift + 4, 0, TAU); c.stroke(); c.globalAlpha = 1; }
@@ -2033,10 +2112,17 @@ function renderScene(c, hud) {
     drawCreature(c, f, poi.x + L.dx, poi.y + L.dy - jump, f.ang + Math.sin(L.t * 40) * 0.25, 1 + 0.35 * u, 1);
   }
   c.save(); c.beginPath(); c.rect(-40, TUB.y - 6, W + 80, H); c.clip();
+  // 批評 r13：海と宇宙で白い泡が何十も重なった。しぶきは小さく薄く。星と宇宙は水ではないので、淡い星くず（加算）にする
+  const dust = id === 'sky' || id === 'cosmos';
+  if (dust) c.globalCompositeOperation = 'lighter';
   for (const p of parts) {
-    if (p.k === 'drop') { c.fillStyle = p.c; c.globalAlpha = 0.9; c.beginPath(); c.arc(p.x, p.y - p.z, p.s * (1 + p.z / 300), 0, TAU); c.fill(); }
-    else if (p.k === 'shred') { c.save(); c.translate(p.x, p.y - p.z); c.rotate(p.rot); c.fillStyle = p.c; c.globalAlpha = 0.9; c.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * 0.66); c.restore(); }
+    if (p.k === 'drop') {
+      c.fillStyle = dust ? DUST_COLS[(p.s * 10 | 0) % DUST_COLS.length] : p.c; c.globalAlpha = dust ? 0.55 : 0.6;
+      c.beginPath(); c.arc(p.x, p.y - p.z, p.s * (dust ? 0.45 : 0.75) * (1 + p.z / 600), 0, TAU); c.fill();
+    }
+    else if (p.k === 'shred') { c.save(); c.globalCompositeOperation = 'source-over'; c.translate(p.x, p.y - p.z); c.rotate(p.rot); c.fillStyle = p.c; c.globalAlpha = 0.9; c.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * 0.66); c.restore(); }
   }
+  c.globalCompositeOperation = 'source-over';
   c.restore();
   c.globalAlpha = 1;
   c.globalCompositeOperation = 'lighter';
