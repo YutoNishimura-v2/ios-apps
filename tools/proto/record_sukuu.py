@@ -196,6 +196,10 @@ def cmd_record(a):
         for i in range(i0, i0 + n):
             data = page.evaluate(f"() => {{ window.__step(1/{FPS}); window.__render(); return document.getElementById('game').toDataURL('image/jpeg', 0.93); }}")
             (FRAMES / f"f{i:05d}.jpg").write_bytes(base64.b64decode(data.split(",", 1)[1]))
+            if i == i0:
+                now = page.evaluate("() => window.__overlayNow ? window.__overlayNow() : null")
+                print("first frame", i, "overlay_now", now, flush=True)
+                (REC / f"first_overlay_{a.start:.2f}.json").write_text(json.dumps({"frame": i, "overlay_now": now}), encoding="utf-8")
             if i % 150 == 0:
                 print("frame", i, flush=True)
         evs = page.evaluate("() => window.__events")
@@ -252,7 +256,8 @@ def cmd_trailer(a):
     """events.json を見て、見せ場（掬い・破れ・強化・段位アップ）を含む区間をつなぐ。"""
     import imageio_ffmpeg
     evs = json.loads((REC / "events.json").read_text(encoding="utf-8"))
-    nframes = len(list(FRAMES.glob("f*.jpg")))
+    # 区間だけ撮ったとき（番号が飛ぶ）も動くよう、枚数ではなく最大の番号+1 を使う
+    nframes = max(int(p.stem[1:]) for p in FRAMES.glob("f*.jpg")) + 1
     segs = json.loads(a.segs) if a.segs else auto_segments(evs, nframes)
     print("segments", segs)
     writer = imageio_ffmpeg.write_frames(str(REC / a.name), (W, H), fps=FPS, codec="libx264",
@@ -289,6 +294,21 @@ def auto_segments(evs, nframes):
     t2 = first(lambda e: e["type"] == "tier" and e["tier"] == 2)
     t3 = first(lambda e: e["type"] == "tier" and e["tier"] == 3)
     rv = first(lambda e: e["type"] == "reveal")
+    wh = first(lambda e: e["type"] == "whale_hit")
+    if rv and wh:
+        # 第6回：最初のコマに前のすくいの数字が残らないよう、直前 1.0 秒にすくいが無いものだけから選ぶ
+        scoops = [e for e in evs if e["type"] == "scoop"]
+        ok = [e for k, e in enumerate(scoops) if 1.5 < e["t"] < tear - 1.0 and (k == 0 or e["t"] - scoops[k - 1]["t"] >= 1.0)]
+        big = max(ok, key=lambda e: e["n"])
+        segs = [(big["t"] - 0.25, big["t"] + 1.5)]       # 掴み：まとめてすくう（数字は 1 つ）
+        segs.append((tear - 0.6, tear + 1.0))             # 破れ
+        segs.append((t1 - 0.7, t1 + 1.8))                 # 強化ボタン → 出目金
+        segs.append((t2 - 0.3, t2 + 1.6))                 # 鯉
+        tail = (rv - 0.4, rv + 3.9)
+        used = sum(e - s for s, e in segs) + (tail[1] - tail[0])
+        segs.append((wh - 0.5, wh - 0.5 + 15 - used))     # 鯨をすくう → 水が全部はね上がって白く光る
+        segs.append(tail)
+        return segs
     if rv:
         # 第5回：最後は「池が星に見える」引きで締める（ボタンを押す 0.4 秒前から）
         segs = [(big["t"] - 0.25, big["t"] + 1.5)]       # 掴み：まとめてすくう（数字は 1 つ）

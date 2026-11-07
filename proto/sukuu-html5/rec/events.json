@@ -7,6 +7,10 @@
 "tier": 0
 },
 {
+"t": 1.1,
+"type": "total_end"
+},
+{
 "t": 1.167,
 "type": "scoop",
 "n": 1,
@@ -14,14 +18,18 @@
 "tier": 0
 },
 {
-"t": 1.533,
+"t": 1.3,
 "type": "coin",
 "v": 14
 },
 {
-"t": 1.533,
+"t": 1.3,
 "type": "afford",
 "coins": 14
+},
+{
+"t": 1.8,
+"type": "total_end"
 },
 {
 "t": 1.867,
@@ -29,6 +37,10 @@
 "n": 2,
 "value": 28,
 "tier": 0
+},
+{
+"t": 2.5,
+"type": "total_end"
 },
 {
 "t": 2.567,
@@ -43,6 +55,10 @@
 "n": 3,
 "value": 63,
 "tier": 0
+},
+{
+"t": 3.833,
+"type": "total_end"
 },
 {
 "t": 4.033,
@@ -85,11 +101,19 @@
 "tier": 0
 },
 {
+"t": 10.133,
+"type": "total_end"
+},
+{
 "t": 10.3,
 "type": "scoop",
 "n": 3,
 "value": 63,
 "tier": 0
+},
+{
+"t": 10.933,
+"type": "total_end"
 },
 {
 "t": 11.067,
@@ -99,11 +123,19 @@
 "tier": 0
 },
 {
+"t": 11.7,
+"type": "total_end"
+},
+{
 "t": 12.067,
 "type": "scoop",
 "n": 4,
 "value": 112,
 "tier": 0
+},
+{
+"t": 12.7,
+"type": "total_end"
 },
 {
 "t": 12.767,
@@ -171,11 +203,19 @@
 "tier": 1
 },
 {
+"t": 17.7,
+"type": "total_end"
+},
+{
 "t": 17.9,
 "type": "scoop",
 "n": 6,
 "value": 648,
 "tier": 1
+},
+{
+"t": 18.533,
+"type": "total_end"
 },
 {
 "t": 18.667,
@@ -227,11 +267,19 @@
 "tier": 0
 },
 {
+"t": 22.667,
+"type": "total_end"
+},
+{
 "t": 23,
 "type": "scoop",
 "n": 6,
 "value": 846,
 "tier": 1
+},
+{
+"t": 23.633,
+"type": "total_end"
 },
 {
 "t": 23.767,
@@ -243,103 +291,150 @@
 {
 "t": 24.333,
 "type": "buy",
-"item": "dur",
-"lv": 9,
-"price": 515
-},
-{
-"t": 24.933,
-"type": "scoop",
-"n": 8,
-"value": 1240,
-"tier": 1
-},
-{
-"t": 25.7,
-"type": "scoop",
-"n": 2,
-"value": 28,
-"tier": 0
-},
-{
-"t": 26.6,
-"type": "buy",
 "item": "size",
 "lv": 9,
 "price": 773
 },
 {
-"t": 27.2,
-"type": "buy",
-"item": "dur",
-"lv": 10,
-"price": 825
+"t": 24.867,
+"type": "scoop",
+"n": 9,
+"value": 1458,
+"tier": 1
 },
 {
-"t": 28.133,
+"t": 25.5,
+"type": "total_end"
+},
+{
+"t": 25.767,
 "type": "scoop",
 "n": 5,
-"value": 670,
+"value": 505,
 "tier": 1
 },
 {
-"t": 28.967,
-"type": "scoop",
-"n": 6,
-"value": 846,
-"tier": 1
+"t": 26.4,
+"type": "total_end"
 },
 {
-"t": 29.767,
-"type": "scoop",
-"n": 6,
-"value": 648,
-"tier": 1
+"t": 26.567,
+"type": "buy",
+"item": "dur",
+"lv": 9,
+"price": 515
 },
 {
-"t": 30.567,
+"t": 27.067,
 "type": "buy",
 "item": "size",
 "lv": 10,
 "price": 1237
 },
 {
-"t": 31.1,
+"t": 27.8,
 "type": "scoop",
-"n": 10,
-"value": 1690,
+"n": 4,
+"value": 640,
 "tier": 1
 },
 {
-"t": 31.867,
+"t": 28.433,
+"type": "total_end"
+},
+{
+"t": 28.7,
 "type": "scoop",
-"n": 2,
-"value": 160,
+"n": 6,
+"value": 450,
 "tier": 1
 },
 {
-"t": 32.667,
+"t": 29.333,
+"type": "total_end"
+},
+{
+"t": 29.467,
 "type": "scoop",
-"n": 8,
-"value": 976,
+"n": 3,
+"value": 261,
 "tier": 1
 },
 {
-"t": 33.433,
+"t": 30.1,
+"type": "total_end"
+},
+{
+"t": 30.233,
+"type": "buy",
+"item": "dur",
+"lv": 10,
+"price": 825
+},
+{
+"t": 31.067,
 "type": "scoop",
 "n": 5,
-"value": 670,
+"value": 835,
 "tier": 1
 },
 {
-"t": 34.233,
+"t": 31.7,
+"type": "total_end"
+},
+{
+"t": 31.933,
+"type": "scoop",
+"n": 4,
+"value": 640,
+"tier": 1
+},
+{
+"t": 32.567,
+"type": "total_end"
+},
+{
+"t": 32.733,
+"type": "scoop",
+"n": 6,
+"value": 450,
+"tier": 1
+},
+{
+"t": 33.367,
+"type": "total_end"
+},
+{
+"t": 33.567,
+"type": "scoop",
+"n": 9,
+"value": 1755,
+"tier": 1
+},
+{
+"t": 34.2,
+"type": "total_end"
+},
+{
+"t": 34.367,
+"type": "scoop",
+"n": 4,
+"value": 244,
+"tier": 1
+},
+{
+"t": 35,
+"type": "total_end"
+},
+{
+"t": 35.167,
 "type": "tier",
 "tier": 2,
 "name": "鯉",
 "price": 3000
 },
 {
-"t": 34.233,
+"t": 35.167,
 "type": "banner",
 "rect": {
 "x": 40,
@@ -355,70 +450,65 @@
 }
 },
 {
-"t": 35.033,
+"t": 36,
 "type": "buy",
 "item": "dur",
 "lv": 11,
 "price": 1319
 },
 {
-"t": 36,
+"t": 36.9,
 "type": "scoop",
-"n": 6,
-"value": 5280,
+"n": 11,
+"value": 8820,
 "tier": 2
 },
 {
-"t": 36.933,
-"type": "scoop",
-"n": 14,
-"value": 7430,
-"tier": 2
+"t": 37.533,
+"type": "total_end"
 },
 {
 "t": 37.7,
 "type": "scoop",
-"n": 4,
-"value": 1016,
-"tier": 2
-},
-{
-"t": 38.567,
-"type": "buy",
-"item": "size",
-"lv": 11,
-"price": 1979
-},
-{
-"t": 39.167,
-"type": "scoop",
 "n": 9,
-"value": 2898,
+"value": 8406,
 "tier": 2
+},
+{
+"t": 38.333,
+"type": "total_end"
+},
+{
+"t": 38.467,
+"type": "scoop",
+"n": 7,
+"value": 2156,
+"tier": 2
+},
+{
+"t": 39.1,
+"type": "total_end"
+},
+{
+"t": 39.333,
+"type": "scoop",
+"n": 8,
+"value": 4592,
+"tier": 2
+},
+{
+"t": 39.967,
+"type": "total_end"
 },
 {
 "t": 40.067,
-"type": "scoop",
-"n": 7,
-"value": 2618,
-"tier": 2
-},
-{
-"t": 40.933,
-"type": "scoop",
-"n": 5,
-"value": 2270,
-"tier": 2
-},
-{
-"t": 41.667,
 "type": "tier",
 "tier": 3,
 "name": "鯨",
 "price": 16000
 },
 {
-"t": 41.667,
+"t": 40.067,
 "type": "banner",
 "rect": {
 "x": 40,
@@ -434,292 +524,492 @@
 }
 },
 {
-"t": 42.533,
+"t": 40.867,
 "type": "buy",
 "item": "dur",
 "lv": 12,
 "price": 2111
 },
 {
-"t": 43.467,
-"type": "scoop",
-"n": 7,
-"value": 13027,
-"tier": 3
-},
-{
-"t": 44.3,
-"type": "scoop",
-"n": 8,
-"value": 13928,
-"tier": 3
-},
-{
-"t": 45.167,
+"t": 41.433,
 "type": "buy",
 "item": "dur",
 "lv": 13,
 "price": 3378
 },
 {
-"t": 45.733,
+"t": 42.267,
+"type": "scoop",
+"n": 11,
+"value": 19880,
+"tier": 3
+},
+{
+"t": 42.267,
+"type": "whale_hit",
+"first": true
+},
+{
+"t": 42.9,
+"type": "total_end"
+},
+{
+"t": 43.533,
+"type": "scoop",
+"n": 6,
+"value": 17364,
+"tier": 3
+},
+{
+"t": 44.167,
+"type": "total_end"
+},
+{
+"t": 44.3,
 "type": "buy",
 "item": "dur",
 "lv": 14,
 "price": 5404
 },
 {
-"t": 46.3,
+"t": 44.867,
 "type": "buy",
 "item": "dur",
 "lv": 15,
 "price": 8647
 },
 {
-"t": 47.067,
-"type": "scoop",
-"n": 5,
-"value": 14105,
-"tier": 3
-},
-{
-"t": 47.833,
-"type": "scoop",
-"n": 8,
-"value": 4064,
-"tier": 2
-},
-{
-"t": 48.533,
-"type": "scoop",
-"n": 7,
-"value": 11676,
-"tier": 3
-},
-{
-"t": 49.367,
-"type": "scoop",
-"n": 6,
-"value": 9768,
-"tier": 3
-},
-{
-"t": 50.267,
+"t": 45.433,
 "type": "buy",
 "item": "dur",
 "lv": 16,
 "price": 13835
 },
 {
-"t": 50.833,
-"type": "buy",
-"item": "dur",
-"lv": 17,
-"price": 22136
-},
-{
-"t": 51.6,
-"type": "scoop",
-"n": 8,
-"value": 13664,
-"tier": 3
-},
-{
-"t": 52.433,
-"type": "scoop",
-"n": 6,
-"value": 9966,
-"tier": 3
-},
-{
-"t": 53.267,
-"type": "scoop",
-"n": 8,
-"value": 26352,
-"tier": 3
-},
-{
-"t": 54.1,
-"type": "scoop",
-"n": 4,
-"value": 11388,
-"tier": 3
-},
-{
-"t": 54.967,
-"type": "buy",
-"item": "dur",
-"lv": 18,
-"price": 35418
-},
-{
-"t": 55.933,
-"type": "scoop",
-"n": 9,
-"value": 28269,
-"tier": 3
-},
-{
-"t": 56.767,
-"type": "scoop",
-"n": 5,
-"value": 10035,
-"tier": 3
-},
-{
-"t": 57.5,
-"type": "buy",
-"item": "dur",
-"lv": 19,
-"price": 56668
-},
-{
-"t": 58.233,
-"type": "scoop",
-"n": 13,
-"value": 37810,
-"tier": 3
-},
-{
-"t": 59.1,
-"type": "scoop",
-"n": 2,
-"value": 2814,
-"tier": 3
-},
-{
-"t": 59.867,
+"t": 46.1,
 "type": "scoop",
 "n": 9,
 "value": 29709,
 "tier": 3
 },
 {
-"t": 60.633,
+"t": 46.1,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 46.733,
+"type": "total_end"
+},
+{
+"t": 47.067,
 "type": "scoop",
-"n": 6,
-"value": 2964,
+"n": 8,
+"value": 24808,
+"tier": 3
+},
+{
+"t": 47.7,
+"type": "total_end"
+},
+{
+"t": 47.833,
+"type": "scoop",
+"n": 5,
+"value": 8105,
+"tier": 3
+},
+{
+"t": 47.833,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 48.467,
+"type": "total_end"
+},
+{
+"t": 48.733,
+"type": "buy",
+"item": "dur",
+"lv": 17,
+"price": 22136
+},
+{
+"t": 49.3,
+"type": "buy",
+"item": "dur",
+"lv": 18,
+"price": 35418
+},
+{
+"t": 50.067,
+"type": "scoop",
+"n": 7,
+"value": 24360,
+"tier": 3
+},
+{
+"t": 50.067,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 50.7,
+"type": "total_end"
+},
+{
+"t": 50.967,
+"type": "scoop",
+"n": 9,
+"value": 3195,
 "tier": 2
 },
 {
-"t": 61.467,
+"t": 51.6,
+"type": "total_end"
+},
+{
+"t": 51.833,
+"type": "scoop",
+"n": 8,
+"value": 16752,
+"tier": 3
+},
+{
+"t": 51.833,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 52.467,
+"type": "total_end"
+},
+{
+"t": 52.7,
+"type": "scoop",
+"n": 6,
+"value": 18126,
+"tier": 3
+},
+{
+"t": 53.333,
+"type": "total_end"
+},
+{
+"t": 53.467,
 "type": "buy",
 "item": "dur",
-"lv": 20,
-"price": 90669
+"lv": 19,
+"price": 56668
 },
 {
-"t": 62.1,
+"t": 54.1,
 "type": "scoop",
-"n": 10,
-"value": 33080,
+"n": 11,
+"value": 34750,
 "tier": 3
 },
 {
-"t": 62.9,
+"t": 54.1,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 54.733,
+"type": "total_end"
+},
+{
+"t": 55.1,
 "type": "scoop",
-"n": 4,
-"value": 5948,
+"n": 3,
+"value": 4242,
 "tier": 3
 },
 {
-"t": 63.767,
+"t": 55.733,
+"type": "total_end"
+},
+{
+"t": 56.067,
 "type": "scoop",
-"n": 7,
-"value": 11676,
+"n": 8,
+"value": 15472,
 "tier": 3
 },
 {
-"t": 64.6,
-"type": "scoop",
-"n": 5,
-"value": 16035,
-"tier": 3
+"t": 56.067,
+"type": "whale_hit",
+"first": false
 },
 {
-"t": 65.367,
-"type": "scoop",
-"n": 10,
-"value": 17550,
-"tier": 3
+"t": 56.7,
+"type": "total_end"
 },
 {
-"t": 66.233,
+"t": 56.9,
 "type": "scoop",
 "n": 8,
 "value": 15208,
 "tier": 3
 },
 {
-"t": 67.167,
+"t": 57.533,
+"type": "total_end"
+},
+{
+"t": 57.733,
+"type": "scoop",
+"n": 3,
+"value": 4440,
+"tier": 3
+},
+{
+"t": 57.733,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 58.367,
+"type": "total_end"
+},
+{
+"t": 58.567,
+"type": "buy",
+"item": "dur",
+"lv": 20,
+"price": 90669
+},
+{
+"t": 59.1,
+"type": "scoop",
+"n": 10,
+"value": 21080,
+"tier": 3
+},
+{
+"t": 59.733,
+"type": "total_end"
+},
+{
+"t": 59.933,
+"type": "scoop",
+"n": 5,
+"value": 7470,
+"tier": 3
+},
+{
+"t": 59.933,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 60.567,
+"type": "total_end"
+},
+{
+"t": 60.833,
+"type": "scoop",
+"n": 9,
+"value": 31149,
+"tier": 3
+},
+{
+"t": 61.467,
+"type": "total_end"
+},
+{
+"t": 61.667,
+"type": "scoop",
+"n": 6,
+"value": 9204,
+"tier": 3
+},
+{
+"t": 61.667,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 62.3,
+"type": "total_end"
+},
+{
+"t": 62.633,
+"type": "scoop",
+"n": 10,
+"value": 32750,
+"tier": 3
+},
+{
+"t": 63.267,
+"type": "total_end"
+},
+{
+"t": 63.433,
+"type": "scoop",
+"n": 7,
+"value": 20538,
+"tier": 3
+},
+{
+"t": 63.433,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 64.067,
+"type": "total_end"
+},
+{
+"t": 64.433,
 "type": "scoop",
 "n": 8,
 "value": 26352,
 "tier": 3
 },
 {
-"t": 68.033,
-"type": "scoop",
-"n": 6,
-"value": 18324,
-"tier": 3
+"t": 65.067,
+"type": "total_end"
 },
 {
-"t": 68.733,
-"type": "scoop",
-"n": 4,
-"value": 7228,
-"tier": 3
-},
-{
-"t": 69.5,
+"t": 65.267,
 "type": "reveal",
 "price": 120000
 },
 {
-"t": 74.633,
+"t": 70.4,
 "type": "reveal_end"
 },
 {
-"t": 75.3,
+"t": 71.233,
 "type": "scoop",
-"n": 8,
-"value": 27632,
+"n": 9,
+"value": 15732,
 "tier": 3
+},
+{
+"t": 71.233,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 71.867,
+"type": "total_end"
+},
+{
+"t": 72.267,
+"type": "scoop",
+"n": 6,
+"value": 9966,
+"tier": 3
+},
+{
+"t": 72.9,
+"type": "total_end"
+},
+{
+"t": 73.2,
+"type": "scoop",
+"n": 9,
+"value": 42246,
+"tier": 3
+},
+{
+"t": 73.2,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 73.833,
+"type": "total_end"
+},
+{
+"t": 74.433,
+"type": "scoop",
+"n": 5,
+"value": 15235,
+"tier": 3
+},
+{
+"t": 75.067,
+"type": "total_end"
+},
+{
+"t": 75.267,
+"type": "scoop",
+"n": 9,
+"value": 17469,
+"tier": 3
+},
+{
+"t": 75.267,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 75.9,
+"type": "total_end"
 },
 {
 "t": 76.2,
 "type": "scoop",
-"n": 8,
-"value": 26352,
+"n": 5,
+"value": 15070,
 "tier": 3
 },
 {
-"t": 77,
+"t": 76.833,
+"type": "total_end"
+},
+{
+"t": 76.967,
 "type": "scoop",
-"n": 4,
-"value": 7360,
+"n": 10,
+"value": 32750,
 "tier": 3
 },
 {
-"t": 77.8,
+"t": 76.967,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 77.6,
+"type": "total_end"
+},
+{
+"t": 77.9,
 "type": "scoop",
-"n": 11,
-"value": 33480,
+"n": 5,
+"value": 9400,
 "tier": 3
 },
 {
-"t": 78.6,
+"t": 78.533,
+"type": "total_end"
+},
+{
+"t": 78.667,
+"type": "buy",
+"item": "dur",
+"lv": 21,
+"price": 145071
+},
+{
+"t": 79.3,
 "type": "scoop",
-"n": 3,
-"value": 4341,
+"n": 9,
+"value": 40806,
 "tier": 3
 },
 {
-"t": 79.7,
-"type": "scoop",
-"n": 14,
-"value": 23950,
-"tier": 3
+"t": 79.3,
+"type": "whale_hit",
+"first": false
+},
+{
+"t": 79.933,
+"type": "total_end"
 }
 ]

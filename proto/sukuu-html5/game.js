@@ -97,6 +97,8 @@ function bokehSprite(col) {
 }
 const WARM = ['rgba(255,150,60,A)', 'rgba(255,90,60,A)', 'rgba(255,210,110,A)', 'rgba(255,120,150,A)'];
 
+// 第6回：背景（水の模様・ビー玉・提灯・ぼけ）の濃さ。1＝第5回、0.5＝半分
+const BGK = 0.5;
 const BG = mk(W, H);
 (function drawBG() {
   const g = BG.getContext('2d');
@@ -109,7 +111,7 @@ const BG = mk(W, H);
   for (let i = 0; i < 26; i++) {
     const s = bokehSprite(WARM[i % 4]);
     const sz = 40 + br() * 110, x = br() * W, y = br() < 0.7 ? br() * 200 : 1060 + br() * 220;
-    g.globalAlpha = 0.25 + br() * 0.35; g.drawImage(s, x - sz / 2, y - sz / 2, sz, sz);
+    g.globalAlpha = (0.25 + br() * 0.35) * BGK; g.drawImage(s, x - sz / 2, y - sz / 2, sz, sz);
   }
   g.globalAlpha = 1;
   // 提灯の列
@@ -117,7 +119,7 @@ const BG = mk(W, H);
   g.beginPath(); g.moveTo(-10, 18); g.quadraticCurveTo(W / 2, 70, W + 10, 18); g.stroke();
   for (let i = 0; i < 7; i++) {
     const x = 50 + i * 104, t = x / W, y = 18 + 4 * t * (1 - t) * 26 + 22;
-    const s = bokehSprite('rgba(255,120,50,A)'); g.globalAlpha = 0.55; g.drawImage(s, x - 70, y - 70, 140, 140); g.globalAlpha = 1;
+    const s = bokehSprite('rgba(255,120,50,A)'); g.globalAlpha = 0.55 * BGK; g.drawImage(s, x - 70, y - 70, 140, 140); g.globalAlpha = BGK;
     const lg = g.createRadialGradient(x - 6, y - 6, 2, x, y, 24);
     lg.addColorStop(0, '#ffe2a0'); lg.addColorStop(0.5, '#ff6a2a'); lg.addColorStop(1, '#a8201a');
     g.fillStyle = lg; g.beginPath(); g.ellipse(x, y, 19, 24, 0, 0, Math.PI * 2); g.fill();
@@ -125,6 +127,7 @@ const BG = mk(W, H);
     for (let k = -2; k <= 2; k++) { g.beginPath(); g.ellipse(x, y, 19, 24 - Math.abs(k) * 0, 0, 0, Math.PI * 2); }
     for (let k = -16; k <= 16; k += 8) { g.beginPath(); g.moveTo(x - Math.sqrt(Math.max(0, 1 - (k / 24) ** 2)) * 19, y + k); g.lineTo(x + Math.sqrt(Math.max(0, 1 - (k / 24) ** 2)) * 19, y + k); g.stroke(); }
     g.fillStyle = '#1c1210'; g.fillRect(x - 9, y - 27, 18, 5); g.fillRect(x - 9, y + 22, 18, 5);
+    g.globalAlpha = 1;
   }
   // たらいの縁（青いプラスチック）
   const T = TUB;
@@ -140,7 +143,7 @@ const BG = mk(W, H);
   gr.addColorStop(0, '#5fd6f0'); gr.addColorStop(0.55, '#2fa6dc'); gr.addColorStop(1, '#14629e');
   g.fillStyle = gr; g.fillRect(ix, iy, iw, ih);
   // たらいの底の青海波
-  g.strokeStyle = 'rgba(255,255,255,0.075)'; g.lineWidth = 3;
+  g.strokeStyle = `rgba(255,255,255,${0.075 * BGK})`; g.lineWidth = 3;
   for (let row = 0; row < 40; row++) for (let col = -1; col < 12; col++) {
     const cx = ix + col * 70 + (row % 2) * 35, cy = iy + row * 24;
     for (let k = 1; k <= 3; k++) { g.beginPath(); g.arc(cx, cy, k * 11, Math.PI, 2 * Math.PI); g.stroke(); }
@@ -150,10 +153,10 @@ const BG = mk(W, H);
   const MC = ['#ff6fa8', '#ffd84a', '#6affc9', '#b48cff', '#ffffff', '#5ab8ff'];
   for (let i = 0; i < 18; i++) {
     const x = ix + 30 + mr() * (iw - 60), y = iy + 30 + mr() * (ih - 60), r = 9 + mr() * 6;
-    g.fillStyle = 'rgba(0,30,70,0.25)'; g.beginPath(); g.ellipse(x + 4, y + 6, r, r * 0.8, 0, 0, 7); g.fill();
+    g.fillStyle = `rgba(0,30,70,${0.25 * BGK})`; g.beginPath(); g.ellipse(x + 4, y + 6, r, r * 0.8, 0, 0, 7); g.fill();
     const mg = g.createRadialGradient(x - r * 0.35, y - r * 0.35, 1, x, y, r);
     mg.addColorStop(0, 'rgba(255,255,255,0.95)'); mg.addColorStop(0.35, MC[i % 6]); mg.addColorStop(1, 'rgba(20,60,120,0.8)');
-    g.globalAlpha = 0.8; g.fillStyle = mg; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.globalAlpha = 1;
+    g.globalAlpha = 0.8 * BGK; g.fillStyle = mg; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.globalAlpha = 1;
   }
   // 縁の内側の影
   g.lineWidth = 40; g.strokeStyle = 'rgba(5,30,70,0.35)'; rr(g, ix, iy, iw, ih, T.r - 12); g.stroke();
@@ -198,6 +201,7 @@ const G = {
 const EV = []; window.__events = EV;
 function ev(type, data) { EV.push(Object.assign({ t: +G.realT.toFixed(3), type }, data || {})); }
 
+const PARTS_CAP = 900;
 const fish = [], parts = [], rings = [], pops = [], texts = [], lifted = [], shards = [], taps = [];
 let fishId = 0;
 
@@ -434,10 +438,34 @@ function lift() {
   // 数字は 1 回すくうごとに 1 つだけ。魚が飛んでいって着くたびに数え上がる
   const top = poi.y - poi.r - 70 > 300;
   // 帯が出ている間は合計を出さない（文字は常に 1 つだけ）
-  G.total = G.banner ? null : { target: total, shown: 0, pending: n, x: clamp(poi.x, 200, W - 200), y: top ? poi.y - poi.r - 70 : poi.y + poi.r + 80, t: 0, end: 0 };
+  // 第6回：合計は出た瞬間に満額。TOTAL_HOLD 秒だけポイの近くに出て、右上のコインへ飛んで消える
+  G.total = G.banner ? null : { target: total, x: clamp(poi.x, 200, W - 200), y: top ? poi.y - poi.r - 70 : poi.y + poi.r + 80, t: 0 };
   texts.length = 0;
   if (n >= 2) SFX.combo(n);
   SFX.plop(0);
+  if (caught.some(f => f.tier === 3)) whaleHit();
+}
+const TOTAL_HOLD = 0.3, TOTAL_FLY = 0.35;
+// 第6回：鯨をすくった瞬間、池の水が全部はね上がって画面が白く光る（最初の 1 回は全力、以後は弱く・間隔を空ける）
+function whaleHit() {
+  const first = !G.whaleHits;
+  if (!first && G.realT - G.whaleT < 1.5) return;
+  G.whaleHits = (G.whaleHits || 0) + 1; G.whaleT = G.realT;
+  ev('whale_hit', { first });
+  G.flash = first ? 1.0 : 0.3; addShake(first ? 36 : 16); G.slowmo = first ? 0.5 : 0.2;
+  // 2 回目以降は池全体ではなくポイのまわりだけ（背景を静かに保つ）
+  const nd = first ? 320 : 40;
+  if (parts.length + nd > PARTS_CAP) parts.splice(0, parts.length + nd - PARTS_CAP);
+  for (let i = 0; i < nd; i++) {
+    const a = R(0, 6.28), rr0 = R(0, poi.r * 1.2);
+    const x = first ? WATER.x + R(0, WATER.w) : poi.x + Math.cos(a) * rr0, y = first ? WATER.y + R(0, WATER.h) : poi.y + Math.sin(a) * rr0;
+    const dx = x - poi.x, dy = y - poi.y, d = Math.hypot(dx, dy) + 1;
+    parts.push({ k: 'drop', x, y, z: R(0, 20), vx: dx / d * R(20, 120), vy: dy / d * R(20, 120), vz: R(first ? 600 : 400, first ? 1150 : 800), s: R(3, 8), c: i % 5 ? '#dff8ff' : '#ffffff', life: 3 });
+  }
+  for (let i = 0; i < (first ? 16 : 0); i++) rings.push({ x: WATER.x + R(40, WATER.w - 40), y: WATER.y + R(40, WATER.h - 40), r: R(10, 40), vr: R(220, 420), life: 0.9, t: 0, w: 7 });
+  rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 900, life: 0.9, t: 0, w: 14 });
+  for (const f of fish) { f.alert = 0; f.flee = 0.8; }
+  SFX.tier();
 }
 function tear(caught) {
   poi.state = 'torn'; poi.tearT = 0; G.tears++;
@@ -526,7 +554,7 @@ function update(dt) {
   // 持ち上げた魚
   for (let i = lifted.length - 1; i >= 0; i--) {
     const L = lifted[i]; L.t += sdt;
-    if (L.t >= 0.22) {
+    if (L.t >= 0.15) {
       // 魚がポイから跳ねて、右上のコインへ飛んでいく
       const x = poi.x + L.dx, y = poi.y + L.dy;
       pops.push({ v: L.v, f: L.f, x, y, sx: x, sy: y, t: 0, vx: R(-120, 120) + (x - poi.x) * 1.5, vy: R(-520, -380), rot: L.f.ang, vr: R(-14, 14), seq: L.i });
@@ -538,14 +566,13 @@ function update(dt) {
   // 飛んでいく魚：放物線で跳ねてから、コインの所へ吸い込まれる
   for (let i = pops.length - 1; i >= 0; i--) {
     const p = pops[i]; p.t += sdt; p.rot += p.vr * sdt;
-    if (p.t < 0.32) { p.x += p.vx * sdt; p.y += p.vy * sdt; p.vy += 1300 * sdt; p.sx = p.x; p.sy = p.y; }
+    if (p.t < 0.25) { p.x += p.vx * sdt; p.y += p.vy * sdt; p.vy += 1300 * sdt; p.sx = p.x; p.sy = p.y; }
     else {
-      const u = clamp((p.t - 0.32) / 0.38, 0, 1), e = easeIn(u);
+      const u = clamp((p.t - 0.25) / 0.3, 0, 1), e = easeIn(u);
       p.x = lerp(p.sx, COUNTER.x - 130, e); p.y = lerp(p.sy, COUNTER.y, e) - Math.sin(u * Math.PI) * 60;
       if (u >= 1) {
         G.coins += p.v; G.earned += p.v; G.bump = 1;
         if (!EV.some(e => e.type === 'coin')) ev('coin', { v: p.v });
-        if (G.total) { G.total.shown += p.v; G.total.pending--; G.total.pulse = 1; }
         sparks(COUNTER.x - 120, COUNTER.y, 8, '#ffe14a', 260);
         SFX.coin(p.seq);
         pops.splice(i, 1);
@@ -553,10 +580,9 @@ function update(dt) {
     }
   }
   if (G.total) {
-    const T = G.total; T.t += dt; T.pulse = Math.max(0, (T.pulse || 0) - dt * 5);
+    const T = G.total; T.t += dt;
     T.y = clamp(T.y, 300, 1000);
-    if (T.pending <= 0) { T.shown = T.target; T.end += dt; if (T.end > 0.55) G.total = null; }
-    if (T.t > 2.5) G.total = null;
+    if (T.t >= TOTAL_HOLD + TOTAL_FLY) { G.total = null; G.bump = 1; ev('total_end'); }
   }
   // パーティクル
   for (let i = parts.length - 1; i >= 0; i--) {
@@ -570,7 +596,7 @@ function update(dt) {
       if (p.t >= p.life) parts.splice(i, 1);
     }
   }
-  if (parts.length > 700) parts.splice(0, parts.length - 700);
+  if (parts.length > PARTS_CAP) parts.splice(0, parts.length - PARTS_CAP);
   for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.t += sdt; r.r += r.vr * sdt; r.vr *= 0.97; if (r.t >= r.life) rings.splice(i, 1); }
   for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.t += dt; if (t.t >= t.life) texts.splice(i, 1); }
   for (let i = shards.length - 1; i >= 0; i--) { const s = shards[i]; s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt; if (s.t > 0.9) shards.splice(i, 1); }
@@ -866,13 +892,13 @@ function renderScene(c) {
   // コースティクス：1 層だけ、水面の範囲だけ塗る（ソフトウェア描画の負荷を下げる）
   if (PERF !== 'nocau') {
     c.save(); const ox = (t * 14 + Math.sin(t * 0.7) * 20) % 256, oy = (t * -9 + Math.cos(t * 0.5) * 16) % 256;
-    c.translate(ox, oy); c.globalAlpha = 0.26; c.fillStyle = cauPat;
+    c.translate(ox, oy); c.globalAlpha = 0.26 * BGK; c.fillStyle = cauPat;
     c.fillRect(WATER.x - ox, WATER.y - oy, WATER.w, WATER.h); c.restore();
   }
   // 提灯の映り込み
   for (const b of WATER_REFL) {
     const s = bokehSprite(b.c), wob = Math.sin(t * 2 + b.p) * 6;
-    c.globalAlpha = 0.18 + 0.06 * Math.sin(t * 3 + b.p);
+    c.globalAlpha = (0.18 + 0.06 * Math.sin(t * 3 + b.p)) * BGK;
     c.drawImage(s, b.x - b.s / 2 + wob, b.y - b.s * 0.25, b.s, b.s * 0.5);
   }
   c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
@@ -932,7 +958,7 @@ function renderScene(c) {
   }
   // 持ち上げた魚（ポイの上でピチピチ）
   for (const L of lifted) {
-    const u = clamp(L.t / 0.22, 0, 1), jump = u * 30;
+    const u = clamp(L.t / 0.15, 0, 1), jump = u * 30;
     const f = L.f; f.phase += 0.9;
     const sc = 1 + 0.35 * u;
     c.fillStyle = 'rgba(0,35,75,0.25)'; drawFishShadow(c, f, poi.x + L.dx, poi.y + L.dy, f.ang, sc * 0.9);
@@ -946,7 +972,7 @@ function renderScene(c) {
   c.globalAlpha = 1;
   // 手前のぼけ
   c.globalCompositeOperation = 'lighter';
-  for (const b of FG_BOKEH) { c.globalAlpha = 0.1 + 0.05 * Math.sin(G.realT * 1.5 + b.p); const s = bokehSprite(b.c); c.drawImage(s, b.x - b.s / 2, b.y - b.s / 2, b.s, b.s); }
+  for (const b of FG_BOKEH) { c.globalAlpha = (0.1 + 0.05 * Math.sin(G.realT * 1.5 + b.p)) * BGK; const s = bokehSprite(b.c); c.drawImage(s, b.x - b.s / 2, b.y - b.s / 2, b.s, b.s); }
   c.globalAlpha = 1;
   for (const p of parts) if (p.k === 'spark') {
     const u = p.t / p.life; c.globalAlpha = 1 - u; c.fillStyle = p.c;
@@ -967,20 +993,24 @@ function renderScene(c) {
   c.globalAlpha = 1;
   // 飛んでいく魚（数字ではなく魚そのものがコインへ）
   for (const p of pops) {
-    const u = p.t < 0.32 ? 0 : clamp((p.t - 0.32) / 0.38, 0, 1);
+    const u = p.t < 0.25 ? 0 : clamp((p.t - 0.25) / 0.3, 0, 1);
     const sc = (1.35 - 1.0 * u) * (p.f.tier >= 3 ? 0.8 : 1);
     p.f.phase += 0.7;
     drawFishBody(c, p.f, p.x, p.y, p.rot, sc, 1);
   }
-  // すくいの合計：1 回に 1 つだけ。着くたびに数え上がって弾む
+  // すくいの合計：1 回に 1 つだけ。満額で弾んで出て、すぐ右上のコインへ飛んで消える
   if (G.total) {
-    const T = G.total, pop = elastic(Math.min(1, T.t * 4)), fade = T.end > 0.35 ? 1 - (T.end - 0.35) / 0.2 : 1;
-    const v = T.target, size = (84 + Math.min(56, Math.log10(T.target + 1) * 14)) * pop * (1 + 0.18 * (T.pulse || 0));
-    c.save(); c.globalAlpha = clamp(fade, 0, 1);
-    // 画面の端で切れないよう、幅を測って内側に寄せる
-    const s = '+' + fmt(v); c.font = '900 ' + size + 'px ' + FONT;
-    const hw = c.measureText(s).width / 2 + size * 0.12, x = clamp(T.x, 24 + hw, W - 24 - hw);
-    text(c, s, x, T.y, size, '#ffe14a', '#6a1a00', size * 0.17);
+    const T = G.total, pop = elastic(Math.min(1, T.t * 5));
+    const u = clamp((T.t - TOTAL_HOLD) / TOTAL_FLY, 0, 1), e = easeIn(u);
+    const base = (84 + Math.min(56, Math.log10(T.target + 1) * 14)) * pop, size = base * (1 - 0.7 * e);
+    c.save(); c.globalAlpha = u > 0.75 ? (1 - u) / 0.25 : 1;
+    // 画面の端で切れないよう、幅を測って内側に寄せる（飛んでいる間は寄せない）
+    const s = '+' + fmt(T.target); c.font = '900 ' + base + 'px ' + FONT;
+    const hw = c.measureText(s).width / 2 + base * 0.12, x0 = clamp(T.x, 24 + hw, W - 24 - hw);
+    const x = lerp(x0, COUNTER.x - 130, e), y = lerp(T.y, COUNTER.y, e) - Math.sin(u * Math.PI) * 50;
+    // 揺れの影響を受けないよう、飛ぶ数字は HUD と同じ座標で描く
+    c.setTransform(1, 0, 0, 1, u > 0 ? 0 : G.shx, u > 0 ? 0 : G.shy);
+    text(c, s, x, y, size, '#ffe14a', '#6a1a00', size * 0.17);
     c.restore();
   }
 
@@ -1224,6 +1254,7 @@ window.__fishPos = () => fish.map(f => [f.x, f.y]);
 window.__caption = (s, life) => { G.caption = { s, t: 0, life: life || 2 }; };
 window.__step = dt => update(dt);
 window.__render = () => render();
+window.__overlayNow = () => texts.length + (G.total ? 1 : 0) + (G.banner ? 1 : 0);
 
 if (!FIXED) {
   let last = performance.now();
