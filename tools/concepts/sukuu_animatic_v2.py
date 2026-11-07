@@ -66,11 +66,12 @@ def tag(img, s):
     base.label(img, s)
 
 
-def nest(outer, inner, k, ring=True, paper_alpha=40):
+def nest(outer, inner, k, ring=True, paper_alpha=40, r_final=None):
     """inner（前の世界）を outer のポイの中へ引いていく。k=0 で全画面、k=1 でポイの中。"""
     k = ease(k)
-    r_disp = lerp(800, R * 0.86, k)
-    sc = lerp(1.0, (2 * R * 0.86) / W * 1.15, k)
+    rf = R if r_final is None else r_final
+    r_disp = lerp(800, rf * 0.86, k)
+    sc = lerp(1.0, (2 * rf * 0.86) / W * 1.15, k)
     w, h = int(W * sc), int(H * sc)
     small = inner.resize((w, h), Image.LANCZOS)
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
