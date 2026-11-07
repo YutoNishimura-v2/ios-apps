@@ -714,9 +714,9 @@ const NIGHT = ['一晩目', '二晩目', '三晩目', '四晩目', '五晩目'];
 // 二晩目からは、前の晩に救った分のご縁で値段が上がる（×2、×3 …）
 const ngMul = () => 1 + 0.5 * G.ng;
 // 二晩目からは値段も少し上がる（お守りの分だけ速くなりすぎないように。批評 r9：2 周目の海が 27 秒）
-const NG_PRICE = 0.45;
-// 宇宙は前の段の残りのお金ですぐ買えてしまうので、二晩目からは 2 倍上げる
-const ngPrice = () => 1 + NG_PRICE * G.ng * (G.k === 4 ? 2 : 1);
+const NG_PRICE = 0.7;
+// 宇宙は前の段の残りのお金ですぐ買えてしまうので、二晩目からは 3 倍上げる
+const ngPrice = () => 1 + NG_PRICE * G.ng * (G.k === 4 ? 3 : 1);
 function bossCaught(f) {
   ev('boss_catch', { kind: f.K.id });
   G.clear = { t: 0 };
