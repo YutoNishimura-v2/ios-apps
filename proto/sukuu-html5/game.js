@@ -824,13 +824,16 @@ function lift() {
   const firstPondSoft = G.ng === 0 && G.k === 0;
   const soft = ease() > 0 && (oneTooHeavy || firstPondSoft || wsum <= capEff() * (1 + 1.5 * ease()));
   // 群れ（6 匹以上）で少しの重すぎ（SPILL_MAX 倍まで）は、破れずに外側からあふれる（批評 r10：一度に 19〜20 匹失う）
-  const school = !hasBoss && caught.length >= 6 && wsum <= capEff() * SPILL_MAX;
-  if (wsum > capEff() && (grace() || school || (!hasBoss && (beginner() || soft)))) {
+  // 批評 r11 の確認：海に入った初心者が群れごと 13〜23 匹で破れた。一晩目は群れが何倍重くても あふれるだけ
+  const school = !hasBoss && caught.length >= 6 && (G.ng === 0 || wsum <= capEff() * SPILL_MAX);
+  // 疲れて持てる重さになった池の主は、いっしょに入った魚だけがこぼれる（主は残る）
+  const bossKeep = hasBoss && caught.every(f => !f.K.boss || (tiredOf(f) > 0.5 && wOf(f) <= capEff()));
+  if (wsum > capEff() && (grace() || school || ((!hasBoss || bossKeep) && (beginner() || soft)))) {
     if (!grace() && !beginner() && !school) G.thickHint = 4;
     // 最初の 3 回（と最初の 12 すくいの間の重すぎ）は破れない：重いものからこぼれる（重さの仕組みだけ見せる）
     // 群れは縁に近いものからあふれる
     if (school) caught.sort((a, b) => Math.hypot(a.x - poi.x, a.y - poi.y) - Math.hypot(b.x - poi.x, b.y - poi.y));
-    else caught.sort((a, b) => wOf(a) - wOf(b));
+    else caught.sort((a, b) => (a.K.boss ? -1e9 : wOf(a)) - (b.K.boss ? -1e9 : wOf(b)));
     let nsp = 0;
     while (caught.length && wsum > capEff()) { const f = caught.pop(); wsum -= wOf(f); f.slip = 0.6; f.flee = 1; splash(f.x, f.y, 10, 0.9); nsp++; }
     ev('spill', { n: nsp, school });
