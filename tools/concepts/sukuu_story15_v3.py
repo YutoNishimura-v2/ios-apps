@@ -136,11 +136,11 @@ def equirect(kind, tw=512, th=256):
         land = n > 0.5
         col = mix((10, 40, 120), (30, 100, 180), n / 0.5)
         h = (n - 0.5) / 0.5
-        lc = mix((60, 140, 60), (150, 125, 80), h * 1.6)
+        lc = mix((55, 145, 60), (160, 130, 80), h * 0.9)
         col = np.where(land[..., None], lc, col)
         ice = np.abs(lat) > 1.15
         col = np.where(ice[..., None], np.array((235, 240, 250), np.float32), col)
-        cl = np.clip((n2 - 0.66) * 3.0, 0, 0.8)[..., None]
+        cl = np.clip((n2 - 0.6) * 3.0, 0, 0.85)[..., None]
         col = col * (1 - cl) + 250 * cl
     elif kind == "jupiter":
         b = np.sin(lat * 15 + (n - 0.5) * 3.5)
@@ -1182,7 +1182,8 @@ def render_world(st, u, pull=False):
         if key == "reveal":
             for p in PLANET_FISH:
                 x, y = planet_pos(p, tau)
-                md.ellipse(((x + 18 - p[3] * 0.5) / 2, (y + 30 - p[3] * 0.35) / 2, (x + 18 + p[3] * 0.5) / 2, (y + 30 + p[3] * 0.35) / 2), fill=150)
+                sx = x + p[6] * 0.1 * p[3] + 16
+                md.ellipse(((sx - p[3] * 0.38) / 2, (y + 34 - p[3] * 0.14) / 2, (sx + p[3] * 0.38) / 2, (y + 34 + p[3] * 0.14) / 2), fill=150)
         m = np.asarray(mimg.filter(ImageFilter.GaussianBlur(6)).resize((W, H), Image.BILINEAR), np.float32) / 255
         arr *= (1 - 0.5 * m)[..., None]
     img = to_img(arr)
@@ -1212,10 +1213,22 @@ def render_world(st, u, pull=False):
     # ポイ
     ncaught = 0
     if not pull:
-        draw_poi(img, d, g, px, py, R, lf, ring=False, handle=False, paper=(0.5 if not st["space"] else 0.32) * (1 - 0.5 * lf))
-        if k >= 1 and (key == "reveal" or tau < st["P"] + 0.35):
+        pa = {"tub": 0.36, "reveal": 0.3}.get(key, 0.5 if not st["space"] else 0.32)
+        draw_poi(img, d, g, px, py, R, lf, ring=False, handle=False, paper=pa * (1 - 0.5 * lf))
+        if key == "reveal":
+            # 改善 5: 前の銀河の最終フレーム（白っぽい）から、暗い円＋渦の見える銀河へ 0.3 秒で切り替える
+            mix = ease((tau - st["P"]) / 0.3)
+            rr = R * 0.93
+            d.ellipse((px - rr, py - rr, px + rr, py + rr), fill=(5, 3, 20, int(230 * mix)))
+            if mix < 1:
+                sm, m = orb_image(k - 1, R)
+                m = m.point(lambda v: int(v * (1 - mix)))
+                img.paste(sm, (int(px - sm.width / 2), int(py - sm.height / 2)), m)
+            if mix > 0:
+                adds.append((galaxy_sprite(int(R * 2.05), tau * 0.6, gain=1.0 * mix), px, py, 1.0))
+        elif k >= 1 and tau < st["P"] + 0.35:
             sm, m = orb_image(k - 1, R)
-            a = 1.0 if key == "reveal" else 1 - ease((tau - st["P"]) / 0.35)
+            a = 1 - ease((tau - st["P"]) / 0.35)
             if a > 0.02:
                 sw, sh = max(2, int(sm.width * a)), max(2, int(sm.height * a))
                 img.paste(sm.resize((sw, sh)), (int(px - sw / 2), int(py - sh / 2)), m.resize((sw, sh)))
@@ -1251,23 +1264,29 @@ def render_world(st, u, pull=False):
         add_sprite(out, spr, x, y, kk)
     gl1 = np.asarray(glow.filter(ImageFilter.GaussianBlur(3)).resize((W, H), Image.BILINEAR), np.float32)
     gl2 = np.asarray(glow.filter(ImageFilter.GaussianBlur(12)).resize((W, H), Image.BILINEAR), np.float32)
-    out += gl1 * 0.7 + gl2 * 1.1
+    # 改善 5: ポイの紙の内側は光を弱め、中の魚・主役が白く飛ばないようにする
+    if not pull:
+        dist = np.sqrt((XX - px) ** 2 + (YY - py) ** 2)
+        inner = np.clip((R * 0.97 - dist) / 8, 0, 1)[..., None]
+    else:
+        inner = 0.0
+    out += (gl1 * 0.7 + gl2 * 1.1) * (1 - 0.7 * inner)
     small = to_img(out).resize((W // 4, H // 4), Image.BILINEAR)
     br = np.clip(np.asarray(small, np.float32) - 215, 0, None) * 2.0
     bl = to_img(br).filter(ImageFilter.GaussianBlur(7)).resize((W, H), Image.BILINEAR)
-    out += np.asarray(bl, np.float32) * 0.5
+    out += np.asarray(bl, np.float32) * 0.5 * (1 - 0.85 * inner)
     return to_img(out), counts
 
 
 # ---------------------------------------------------------------- 種明かし：惑星の金魚
-# (名前, テクスチャ, 尾の色, 直径, 基準x, 基準y, 向き)
+# (名前, テクスチャ, ひれの色, 全長px, 基準x, 基準y, 向き(1=右,-1=左))
 PLANET_FISH = [
-    ("地球", "earth", (255, 255, 255), 118, 182, 545, -0.4),
-    ("木星", "jupiter", (255, 190, 120), 150, 528, 535, 3.5),
-    ("火星", "mars", (255, 110, 60), 92, 168, 785, 0.3),
-    ("海王星", "neptune", (110, 160, 255), 112, 545, 790, 2.8),
-    ("金星", "venus", (255, 225, 150), 100, 205, 955, -0.2),
-    ("土星", "saturn", (240, 210, 150), 120, 520, 950, 3.3),
+    ("地球", "earth", (225, 240, 255), 176, 190, 565, 1),
+    ("木星", "jupiter", (255, 200, 140), 190, 530, 560, -1),
+    ("火星", "mars", (255, 120, 70), 152, 185, 775, 1),
+    ("海王星", "neptune", (120, 170, 255), 166, 535, 775, -1),
+    ("金星", "venus", (255, 232, 170), 160, 190, 980, 1),
+    ("土星", "saturn", (245, 220, 165), 180, 530, 975, -1),
 ]
 PLANET_GLOW = {"earth": (40, 110, 220), "jupiter": (140, 100, 50), "mars": (140, 50, 20), "neptune": (40, 70, 200),
                "venus": (150, 120, 60), "saturn": (140, 110, 60)}
@@ -1278,42 +1297,110 @@ def planet_pos(p, tau):
     return p[4] + 14 * math.sin(tau * 1.1 + i), p[5] + 9 * math.cos(tau * 0.9 + i * 2)
 
 
+def planet_fish_sprite(tk, L, fc, rot, wig):
+    """右向きの金魚の形。体に惑星のテクスチャを貼る（改善 5）。"""
+    S = int(L * 1.3)
+    c = S / 2
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img, "RGBA")
+    a, b = 0.30 * L, 0.20 * L
+    bx = c + 0.14 * L
+    rear = bx - a * 0.85
+
+    def P(px, py):
+        return (c + px * L, c + py * L)
+
+    # 尾びれ（2 層の薄いベール、先が二股に分かれて流れる）
+    for layer, (sc, al) in enumerate(((1.0, 95), (0.72, 150))):
+        pts = [(rear + 0.02 * L, c)]
+        for j in range(25):
+            q = j / 24
+            ang = (q - 0.5) * 2.0
+            lobe = 0.20 + 0.20 * sc * (0.75 + 0.35 * abs(math.sin(q * math.pi * 2)))
+            sway = wig * 0.10 * math.sin(q * math.pi)
+            pts.append((rear - lobe * L * math.cos(ang) * 1.05, c + lobe * L * math.sin(ang) * 0.95 + sway * L))
+        d.polygon(pts, fill=fc + (al,))
+        if layer == 1:
+            for j in range(1, 25, 3):
+                d.line((pts[0], pts[j]), fill=(255, 255, 255, 110), width=1)
+    def fan(px, py, r, a0, a1, al, n=14):
+        """付け根 (px,py) から扇形に広がる、縁が波打つひれ。角度は度（0=右、90=下）。"""
+        x0, y0 = c + px * L, c + py * L
+        pts = [(x0, y0)]
+        for j in range(n + 1):
+            q = j / n
+            aa = math.radians(a0 + (a1 - a0) * q)
+            rr = r * L * (0.85 + 0.15 * abs(math.sin(q * math.pi * 3))) * (0.55 + 0.45 * math.sin(q * math.pi))
+            pts.append((x0 + rr * math.cos(aa), y0 + rr * math.sin(aa)))
+        d.polygon(pts, fill=fc + (al,))
+        for j in range(1, n + 1, 2):
+            d.line((pts[0], pts[j]), fill=(255, 255, 255, 80), width=1)
+
+    # 背びれ・尻びれ（扇形でなびく）
+    fan(0.10, -0.15, 0.24, 205 + wig * 6, 285 + wig * 6, 140)
+    fan(-0.04, 0.12, 0.17, 95 + wig * 8, 160 + wig * 8, 130, 10)
+    # 土星の輪（奥側）
+    ring_box = (bx - 0.52 * L, c - 0.11 * L, bx + 0.42 * L, c + 0.11 * L)
+    if tk == "saturn":
+        d.arc(ring_box, 180, 360, fill=(230, 205, 155, 235), width=max(3, int(L * 0.045)))
+    # 体（テクスチャ付きの楕円体、後ろ半分は細く）
+    ys, xs = np.mgrid[0:S, 0:S].astype(np.float32)
+    nx = (xs - bx) / a
+    bh = b * (1 - 0.38 * np.clip(-nx, 0, 1)) * (1 + 0.06 * np.clip(nx, 0, 1))
+    ny = (ys - c) / bh
+    r2 = nx * nx + ny * ny
+    nz = np.sqrt(np.clip(1 - r2, 0, 1))
+    lat = np.arcsin(np.clip(-ny, -1, 1)) * 0.9
+    lon = np.arctan2(nx, nz + 1e-6) * 0.85 + rot
+    t = tex(tk)
+    th, tw = t.shape[:2]
+    u = ((lon / TAU2) % 1 * tw).astype(np.int32) % tw
+    v = np.clip(((0.5 - lat / math.pi) * th).astype(np.int32), 0, th - 1)
+    col = t[v, u]
+    Lv = np.array((-0.45, -0.65, 0.62), np.float32)
+    Lv /= np.linalg.norm(Lv)
+    lam = np.clip(nx * Lv[0] + ny * Lv[1] + nz * Lv[2], 0, 1)
+    col = col * (0.3 + 0.75 * lam[..., None] ** 0.8) + (np.clip(lam, 0, 1) ** 24 * 80)[..., None]
+    rim = (1 - nz) ** 2.5
+    col = col + np.array(PLANET_GLOW[tk], np.float32) * (rim * 0.9)[..., None]
+    if tk == "venus":
+        col = col * 0.8 + 255 * 0.2  # もや
+    if tk == "jupiter":  # 大赤斑を体の腹側に描き足す
+        spot = np.exp(-((nx - 0.05) / 0.22) ** 2 - ((ny - 0.36) / 0.12) ** 2)[..., None]
+        col = col * (1 - 0.85 * spot) + np.array((200, 80, 50), np.float32) * (0.3 + 0.75 * lam[..., None]) * 0.85 * spot
+    al = np.clip((1 - np.sqrt(r2)) * a * 0.9, 0, 1) * 255
+    body = Image.fromarray(np.dstack([np.clip(col, 0, 255), al]).astype(np.uint8), "RGBA")
+    img.alpha_composite(body)
+    d = ImageDraw.Draw(img, "RGBA")
+    # えらの線・胸びれ
+    d.arc((bx + 0.15 * a - 0.5 * b, c - 0.75 * b, bx + 0.15 * a + 0.5 * b, c + 0.75 * b), 300, 60, fill=(20, 20, 40, 90), width=2)
+    fan(0.17, 0.07, 0.14, 100 + wig * 10, 150 + wig * 10, 150, 8)
+    if tk == "saturn":
+        d.arc(ring_box, 0, 180, fill=(240, 218, 170, 245), width=max(3, int(L * 0.045)))
+        d.arc((ring_box[0] + 0.05 * L, ring_box[1] + 0.025 * L, ring_box[2] - 0.05 * L, ring_box[3] - 0.025 * L), 0, 180,
+              fill=(170, 140, 95, 200), width=max(1, int(L * 0.015)))
+    # 目と口
+    ex, ey, er = bx + 0.62 * a, c - 0.22 * b, 0.055 * L
+    d.ellipse((ex - er, ey - er, ex + er, ey + er), fill=(250, 250, 255, 255), outline=(20, 20, 40, 200), width=1)
+    d.ellipse((ex - er * 0.35, ey - er * 0.6, ex + er * 0.75, ey + er * 0.6), fill=(10, 10, 20, 255))
+    d.ellipse((ex - er * 0.1, ey - er * 0.45, ex + er * 0.3, ey - er * 0.05), fill=(255, 255, 255, 255))
+    mx, my = bx + a * 0.98, c + 0.12 * b
+    d.arc((mx - 0.03 * L, my - 0.02 * L, mx + 0.01 * L, my + 0.03 * L), 90, 200, fill=(30, 20, 30, 200), width=2)
+    return img
+
+
 def draw_planet_fish(img, d, g, tau):
     for i, p in enumerate(PLANET_FISH):
-        name, tk, fc, D, ax, ay, hd = p
+        name, tk, fc, L, ax, ay, face = p
         x, y = planet_pos(p, tau)
-        ang = hd + 0.25 * math.sin(tau * 1.3 + i)
-        L = D * 1.9
-        w = math.sin(tau * 7 + i) * 0.2
-        for layer, (sc, al) in enumerate(((1.0, 80), (0.75, 130))):
-            tl = [(-0.15, 0)]
-            for j in range(21):
-                q = j / 20
-                a = (q - 0.5) * 2.3
-                lobe = 0.62 + 0.18 * abs(math.sin(q * math.pi * 2)) - 0.12 * math.cos(q * math.pi * 2) ** 8
-                rr = (0.2 + lobe * sc) * 0.8
-                tl.append((-0.15 - rr * math.cos(a) * 0.9, rr * math.sin(a) * 0.75 + w * q * (1 - q) * 4 * rr))
-            d.polygon(_xf(tl, x, y, ang, L), fill=fc + (al,))
-            if layer == 1:
-                for q in range(1, 21, 3):
-                    d.line(_xf([tl[0], tl[q]], x, y, ang, L), fill=(255, 255, 255, 90), width=1)
-        for s in (-1, 1):
-            fin = [(0.05, s * 0.2), (-0.12, s * (0.42 + w * 0.3)), (-0.2, s * 0.3)]
-            d.polygon(_xf(fin, x, y, ang, L), fill=fc + (130,))
-        dorsal = [(0.1, 0), (-0.05, -0.04), (-0.3, 0.0 + w * 0.4), (-0.05, 0.04)]
-        d.polygon(_xf(dorsal, x, y, ang, L), fill=fc + (110,))
-        gcirc(g, x, y, D * 0.62, scale_col(PLANET_GLOW[tk], 0.55))
-        if tk == "saturn":
-            d.ellipse((x - D * 0.95, y - D * 0.28, x + D * 0.95, y + D * 0.28), outline=(225, 200, 150, 230), width=int(D * 0.09))
-        spr = sphere(tex(tk), D, tau * 0.5 + i, rim=PLANET_GLOW[tk], rim_k=1.0, amb=0.3)
-        paste_rgba(img, spr, x, y)
-        if tk == "saturn":
-            d.arc((x - D * 0.95, y - D * 0.28, x + D * 0.95, y + D * 0.28), 0, 180, fill=(235, 210, 160, 245), width=int(D * 0.09))
-            d.arc((x - D * 0.8, y - D * 0.2, x + D * 0.8, y + D * 0.2), 0, 180, fill=(180, 150, 100, 200), width=int(D * 0.03))
-        ex, ey = _xf([(0.3, -0.12)], x, y, ang, D)[0]
-        r = D * 0.07
-        d.ellipse((ex - r, ey - r, ex + r, ey + r), fill=(255, 255, 255, 240))
-        d.ellipse((ex - r * 0.55, ey - r * 0.5, ex + r * 0.45, ey + r * 0.5), fill=(15, 15, 25, 255))
+        wig = math.sin(tau * 6 + i * 1.3)
+        rot0 = {"jupiter": 3.25}.get(tk, i * 1.1)  # 木星は大赤斑が体の中央に来る向き
+        spr = planet_fish_sprite(tk, L, fc, tau * 0.12 + rot0, wig)
+        if face < 0:
+            spr = spr.transpose(Image.FLIP_LEFT_RIGHT)
+        spr = spr.rotate(8 * math.sin(tau * 1.2 + i), resample=Image.BICUBIC)
+        gcirc(g, x + face * 0.14 * L, y, L * 0.3, scale_col(PLANET_GLOW[tk], 0.45))
+        img.paste(spr, (int(x - spr.width / 2), int(y - spr.height / 2)), spr)
     return len(PLANET_FISH)
 
 
@@ -1324,32 +1411,36 @@ def text_o(d, xy, s, size, fill, stroke=6, sfill=(25, 12, 40), anchor="mm", alph
     d.text(xy, s, font=f, fill=fill[:3] + (alpha,), anchor=anchor, stroke_width=stroke, stroke_fill=sfill[:3] + (alpha,))
 
 
+NUM_CAP = 15
+
+
 def draw_numbers(img, st, tau):
     d = ImageDraw.Draw(img, "RGBA")
     cnt = 0
     px, py, R, _ = poi_state(st, tau)
+    # 改善 5: 同時 15 個まで。ポイの縁の外の輪に出して外へ流す。大きい数字は見出し（バナーのボーナス）1 つだけ。
     live = []
     for ev in st["events"]:
-        if ev[4] in (0, 1, 2, 5):
-            life = 0.8 if ev[4] != 5 else 1.2
+        if ev[4] in (0, 1, 2):
+            life = 0.8
             if 0 <= tau - ev[0] < life:
                 live.append((ev, life))
-    live = live[-48:]
+    live = live[-NUM_CAP:]
     for ev, life in live:
         et, ex, ey, val, kind, eid, _ = ev
         age = tau - et
         q = age / life
-        rise = (60 if kind != 5 else 0) * ease_out(q)
-        if kind == 5:
-            ex, ey = px, py - R - 40
         vx, vy = ex - px, ey - py
-        dn = math.hypot(vx, vy) + 1e-3
-        push = (R * 1.05 - dn) if dn < R * 1.05 else 0.0
-        push += 70 * ease_out(q)
-        x = ex + vx / dn * push
-        y = ey + vy / dn * push - rise - 10
+        dn = math.hypot(vx, vy)
+        if dn < 1:
+            a = (eid * 2.399) % TAU2
+            vx, vy, dn = math.cos(a), math.sin(a), 1.0
+        rad = R * 1.18 + 16 * (eid % 3) + 90 * ease_out(q)
+        x = px + vx / dn * rad
+        y = py + vy / dn * rad
         x = min(W - 80, max(80, x))
-        base = {0: 30, 1: 44, 2: 22, 5: 60}[kind]
+        y = min(H - 30, max(250, y))
+        base = {0: 28, 1: 34, 2: 22}[kind]
         size = base * (1 + 0.7 * max(0.0, 1 - age / 0.1))
         alpha = int(255 * (1 if q < 0.6 else 1 - (q - 0.6) / 0.4))
         col = {0: (255, 228, 70), 1: (255, 120, 50), 2: (255, 255, 255), 5: (120, 255, 200)}[kind]
@@ -1565,7 +1656,8 @@ def frame_img(f, want_counts=False):
             if b >= 0:
                 x, y = planet_pos(p, tau)
                 s = back(b / 0.25)
-                yy = y + p[3] * 0.5 + 30
+                yy = y + p[3] * 0.3 + 26
+                x = x + p[6] * 0.1 * p[3]
                 lab = p[0]
                 f = font(32 * s)
                 tw = d.textlength(lab, font=f)
@@ -1607,10 +1699,10 @@ def preview(tag):
     print("preview %.1fs" % (time.time() - t0))
 
 
-def render():
+def render(mp4name="story15_v3_9x16.mp4", kdir="keyframes"):
     import multiprocessing as mp
     import imageio_ffmpeg
-    path = os.path.join(OUT, "story15_v3_9x16.mp4")
+    path = os.path.join(OUT, mp4name)
     t0 = time.time()
     wr = imageio_ffmpeg.write_frames(path, (W, H), fps=FPS, codec="libx264", pix_fmt_out="yuv420p", quality=8,
                                      macro_block_size=8)
@@ -1624,7 +1716,7 @@ def render():
     nfr, secs = imageio_ffmpeg.count_frames_and_secs(path)
     print("wrote", path, "frames", nfr, "secs", secs, "render %.1fs" % (time.time() - t0))
     assert nfr == NF, nfr
-    kd = os.path.join(OUT, "keyframes")
+    kd = os.path.join(OUT, kdir)
     os.makedirs(kd, exist_ok=True)
     for name, f in KEYS.items():
         img, c = frame_img(f, True)
@@ -1658,6 +1750,6 @@ if __name__ == "__main__":
     if cmd == "preview":
         preview(sys.argv[2] if len(sys.argv) > 2 else "p")
     elif cmd == "render":
-        render()
+        render(*sys.argv[2:4])  # 例: render story15_v3_r5_9x16.mp4 keyframes_r5
     elif cmd == "compare":
         compare(sys.argv[2] if len(sys.argv) > 2 else "r1")
