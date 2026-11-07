@@ -527,9 +527,10 @@ const ease = () => {
   return Math.max(slump(), clamp((EASE_TO - G.wt) / (EASE_TO - EASE_FROM), 0, 1));
 };
 // 一晩目の池に長くいると、池の主が疲れてくる（軽くなり、逃げずにポイへ寄る）。速い人には効かない
-const TIRED_FROM = 105, TIRED_LEN = 45;
+const TIRED_FROM = 95, TIRED_LEN = 40;
 const tiredOf = f => (f.K.boss && G.ng === 0 && G.k === 0 ? clamp((G.wt - TIRED_FROM) / TIRED_LEN, 0, 1) : 0);
-const wOf = f => f.K.w * (1 - 0.62 * tiredOf(f));
+// 疲れきった主は 17 → 3.4（紙の厚さ Lv1 で持てる）
+const wOf = f => f.K.w * (1 - 0.8 * tiredOf(f));
 function insidePoi(f) { return Math.hypot(f.x - poi.x, f.y - poi.y) + f.r * 0.55 <= poi.r * 0.98; }
 const tooHeavy = f => wOf(f) > cap() + 1e-6;
 // 枠に入りきらない（ポイの大きさが要る）
@@ -814,7 +815,7 @@ function lift() {
   // はじめての人は、最初の 12 すくいが 2 倍（最初の買い物まで早く着く）
   // はじめての人は最初の 12 すくいが 2 倍。一晩目の池に長くいる人ほど（50〜130 秒で 1→3 倍）値段が上がる＝追いつける
   // 上限なし（批評 r10：130 秒以降、稼ぎが横ばい）
-  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 0.025 * Math.max(0, G.wt - 50) : 1;
+  const catchUp = G.ng === 0 && G.k === 0 ? 1 + 0.04 * Math.max(0, G.wt - 50) : 1;
   const n = caught.length, m = mult(n) * (beginner() ? 2 : catchUp) * (n >= 4 ? 1 + perkN('bell') : 1);
   let total = 0, rescue = 0;
   const boss = caught.find(f => f.K.boss);

@@ -14,6 +14,9 @@ def main() -> None:
     d = Path(sys.argv[1])
     secs = float(sys.argv[2]) if len(sys.argv) > 2 else 180.0
     evs = json.loads((d / "events.json").read_text(encoding="utf-8"))
+    # hand.py は実時間なので、ゲームの時間は短くなる。最後の出来事までを数える
+    secs = min(secs, max(e["t"] for e in evs))
+    print(f"game seconds {secs:.1f}")
     scoops = [(e["t"], e.get("value", 0)) for e in evs if e["type"] == "scoop"]
     buys = [e["t"] for e in evs if e["type"] == "buy"]
     tears = [e for e in evs if e["type"] == "tear"]
