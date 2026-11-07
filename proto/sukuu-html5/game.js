@@ -71,7 +71,7 @@ const WORLDS = [
     vortex: { x: 0.5, y: 0.44, R: 290, core: 58, start: 0, gravity: true },
     kinds: [
       // 批評 r14：渦巻きと星雲の塊が多くてごちゃごちゃ → 数を減らし、1 つの値打ちを上げる（稼ぎはほぼ同じ）
-      { id: 'ginga', name: '銀河', draw: 'galaxy', r: 26, w: 0.4, v: 0.6, spd: 100, n: 10, school: true },
+      { id: 'ginga', name: '銀河', draw: 'galaxy', r: 26, w: 0.4, v: 0.8, spd: 100, n: 7, school: true },
       { id: 'seiun', name: '星雲', draw: 'nebula', r: 62, w: 7, v: 16, spd: 34, n: 2 },
       // 宇宙の主役は大きさ：キンちゃんは大きな光の輪をまとっていて、輪ごとすくう（大きさ Lv2 が要る）
       { id: 'kin', name: 'キンちゃん', draw: 'kin', halo: true, r: 150, w: 6, v: 500, spd: 110, n: 1, boss: true, orbit: true },
@@ -641,9 +641,24 @@ function poiHit(x, y, hw, hh) {
   const dx = Math.max(0, Math.abs(x - poi.x) - hw), dy = Math.max(0, Math.abs(y - poi.y) - hh);
   return dx * dx + dy * dy < (poi.r + 12) * (poi.r + 12) ? 1 : 0;
 }
-// 批評 r15：「+1,09x」が手（指）とポイの柄に隠れた。柄と手は右下（角 0.95）に伸びる
+// 批評 r16：ポイが下の方にあると柄と手が下のボタンにかぶった → 柄の先（手）がボタンの上に来ない角度を選ぶ
+const HANDLE_ANGS = [0.95, 0.55, 0.15, -0.3, -0.7];
+function handAngFor(x, y, r) {
+  const L = Math.max(90, r * 1.7), dEnd = r + L, dHand = r + L * 0.78;
+  // 手の絵は中心から下へ約 55px（影を含む）。柄の先も手もボタンの上端より上に収める
+  for (const a of HANDLE_ANGS) if (y + Math.sin(a) * dHand + 60 < SHOP_Y && y + Math.sin(a) * dEnd + 12 < SHOP_Y) return a;
+  return HANDLE_ANGS[HANDLE_ANGS.length - 1];
+}
+/** 描くときの柄の角度（時間で目標へ寄せる＝約 0.1 秒。描く回数によらない。見た目だけ） */
+function handAng() {
+  const tgt = handAngFor(poi.x, poi.y, poi.r * 1.06), dt = poi.haT == null ? 1 : Math.max(0, G.realT - poi.haT);
+  poi.haT = G.realT;
+  poi.ha = poi.ha == null ? tgt : poi.ha + (tgt - poi.ha) * (1 - Math.exp(-dt * 20));
+  return poi.ha;
+}
+// 批評 r15：「+1,09x」が手（指）とポイの柄に隠れた。柄と手は右下（角 0.95、下の方では上向き）に伸びる
 function handHit(x, y, hw, hh) {
-  const a = 0.95, L = Math.max(90, poi.r * 1.8);
+  const a = poi.ha == null ? 0.95 : poi.ha, L = Math.max(90, poi.r * 1.8);
   for (const d of [poi.r + L * 0.35, poi.r + L * 0.78]) {
     const hx = poi.x + Math.cos(a) * d, hy = poi.y + Math.sin(a) * d;
     const dx = Math.max(0, Math.abs(x - hx) - hw), dy = Math.max(0, Math.abs(y - hy) - hh);
@@ -1765,8 +1780,13 @@ function drawSun(c, f, r, t) {
   c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * 0.6, 0, TAU); c.fill();
   c.fillStyle = 'rgba(255,120,20,0.35)'; for (let i = 0; i < 5; i++) { const a = t * 0.3 + i * 1.3; c.beginPath(); c.arc(Math.cos(a) * r * 0.3, Math.sin(a * 1.3) * r * 0.25, r * 0.08, 0, TAU); c.fill(); }
 }
+// 批評 r16：同じ大きさの渦がブドウの房のよう → 見た目だけ大きさと傾きに差をつける（当たりの大きさ f.r は同じ）
+const GALAXY_SIZE = [0.72, 1.0, 1.3, 0.85, 1.12, 0.62, 1.2];
+const GALAXY_TILT = [1, 0.55, 0.8, 0.42, 0.68, 0.9, 0.5];
 function drawGalaxy(c, f, r, t) {
-  c.rotate(f.spin + t * 0.6);
+  r *= GALAXY_SIZE[f.id % GALAXY_SIZE.length];
+  c.rotate(f.spin); c.scale(1, GALAXY_TILT[(f.id * 3) % GALAXY_TILT.length]);
+  c.rotate(t * (0.3 + (f.id % 3) * 0.15));
   if (IMG.sp_galaxy) {
     c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.5; c.drawImage(bokehSprite('rgba(140,220,255,A)'), -r, -r, r * 2, r * 2); c.globalAlpha /= 0.5; c.globalCompositeOperation = 'source-over';
     sprite(c, 'sp_galaxy', r * 0.95); return;
@@ -1962,15 +1982,15 @@ function drawWetGauge(c, x, y, r) {
   const df = clamp(1 - poi.wet, 0, 1), R2 = r + 24;
   const col = df > 0.5 ? '#5ee07a' : df > 0.25 ? '#ffd23a' : '#ff4a3a';
   c.lineCap = 'round';
-  c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 11; c.beginPath(); c.arc(x, y, R2, 0, TAU); c.stroke();
-  c.strokeStyle = col; c.lineWidth = 7; c.beginPath(); c.arc(x, y, R2, -Math.PI / 2, -Math.PI / 2 + df * TAU); c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 8; c.beginPath(); c.arc(x, y, R2, 0, TAU); c.stroke();
+  c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); c.arc(x, y, R2, -Math.PI / 2, -Math.PI / 2 + df * TAU); c.stroke();
   // 速く動かしているときは、しずくの印が縁から落ちる
   if (poi.speed > 300) { c.fillStyle = '#bff4ff'; for (let k = 0; k < 3; k++) { const a = G.realT * 5 + k * 2.1; c.beginPath(); c.arc(x + Math.cos(a) * R2, y + Math.sin(a) * R2, 5, 0, TAU); c.fill(); } }
   c.lineCap = 'butt';
 }
 function drawRing(c, x, y, r, alpha, rim) {
   c.globalAlpha = alpha;
-  const a = 0.95, hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r, L = Math.max(90, r * 1.7);
+  const a = poi.ha == null ? 0.95 : poi.ha, hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r, L = Math.max(90, r * 1.7);
   c.save(); c.translate(hx, hy); c.rotate(a);
   c.fillStyle = '#c9201c'; rr(c, -4, -r * 0.07 - 3, L, r * 0.14 + 6, 6); c.fill();
   c.fillStyle = 'rgba(255,170,160,0.6)'; c.fillRect(2, -r * 0.05 - 1, L - 12, 3);
@@ -1982,6 +2002,26 @@ function drawRing(c, x, y, r, alpha, rim) {
 }
 
 // ---------------------------------------------------------------- 描画：渦・ブラックホール
+/** ブラックホールの円盤の半分（a0〜a1）。内側は白く熱く外へ赤く、左（近づく側）が明るい。流れる筋で回って見せる */
+function drawBHDisk(c, core, t, a0, a1) {
+  const rIn = core * 1.3, rOut = core * 3.0, tilt = 0.28, n = 8, bw = (rOut - rIn) / n;
+  for (let k = 0; k < n; k++) {
+    const u = k / (n - 1), rad = rIn + bw * (k + 0.5);
+    const r0 = 255, g0 = Math.round(lerp(238, 80, u)), b0 = Math.round(lerp(200, 40, u)), al = lerp(0.6, 0.1, u);
+    const lg = c.createLinearGradient(-rad, 0, rad, 0);
+    lg.addColorStop(0, `rgba(${r0},${g0},${b0},${Math.min(1, al * 1.5)})`); lg.addColorStop(1, `rgba(${r0},${g0},${b0},${al * 0.4})`);
+    c.strokeStyle = lg; c.lineWidth = bw * 1.15;
+    c.beginPath(); c.ellipse(0, 0, rad, rad * tilt, 0, a0, a1); c.stroke();
+  }
+  c.lineWidth = Math.max(1.5, core * 0.04); c.setLineDash([core * 0.45, core * 0.8]);
+  for (let k = 0; k < 3; k++) {
+    const rad = lerp(rIn, rOut, 0.15 + k * 0.28);
+    c.lineDashOffset = -t * core * (3 - k * 0.7);
+    c.strokeStyle = `rgba(255,248,225,${0.45 - k * 0.1})`;
+    c.beginPath(); c.ellipse(0, 0, rad, rad * tilt, 0, a0, a1); c.stroke();
+  }
+  c.setLineDash([]); c.lineDashOffset = 0;
+}
 function drawVortex(c, V, t) {
   if (!V || !V.on) return;
   const id = WD().id, appear = clamp(V.age / 1.2, 0, 1), R0 = V.R * appear;
@@ -1993,17 +2033,33 @@ function drawVortex(c, V, t) {
     for (let i = 0; i < 6; i++) { c.beginPath(); for (let u = 0; u < 1; u += 0.04) { const a = t * 2.2 + i * TAU / 6 + u * 5, d = R0 * (1 - u); u === 0 ? c.moveTo(Math.cos(a) * d, Math.sin(a) * d) : c.lineTo(Math.cos(a) * d, Math.sin(a) * d); } c.stroke(); }
   } else {
     // ブラックホール（星・宇宙）
+    // 批評 r16：「平らな黒い丸と輪だけで作りかけ」→ 光を吸い込む円盤（奥半分→影→光の輪→手前半分）と、
+    // 影の上下に回り込んで見える奥の円盤（光のゆがみ）。左が明るい（近づく側）。乱数は使わない＝遊びは変えない
     const core = V.core * appear;
     c.globalCompositeOperation = 'lighter';
-    const g = c.createRadialGradient(0, 0, core * 0.9, 0, 0, R0); g.addColorStop(0, 'rgba(255,170,80,0.55)'); g.addColorStop(0.25, 'rgba(255,90,160,0.25)'); g.addColorStop(1, 'rgba(120,80,255,0)');
+    const g = c.createRadialGradient(0, 0, core * 0.9, 0, 0, R0); g.addColorStop(0, 'rgba(255,150,70,0.32)'); g.addColorStop(0.3, 'rgba(190,70,150,0.12)'); g.addColorStop(1, 'rgba(120,80,255,0)');
     c.fillStyle = g; c.beginPath(); c.arc(0, 0, R0, 0, TAU); c.fill();
+    drawBHDisk(c, core, t, Math.PI, TAU);
+    // 光のゆがみ：奥の円盤が影の上（と少し下）に弧になって見える
+    for (let k = 0; k < 4; k++) {
+      const rad = core * (1.1 + k * 0.09), al = 0.55 - k * 0.12;
+      c.strokeStyle = `rgba(255,${210 - k * 35},${150 - k * 30},${al})`; c.lineWidth = core * 0.11;
+      c.beginPath(); c.arc(0, 0, rad, Math.PI * 1.02, Math.PI * 1.98); c.stroke();
+      c.strokeStyle = `rgba(255,${190 - k * 35},${130 - k * 30},${al * 0.45})`; c.lineWidth = core * 0.07;
+      c.beginPath(); c.arc(0, 0, rad, Math.PI * 0.15, Math.PI * 0.85); c.stroke();
+    }
     c.globalCompositeOperation = 'source-over';
-    c.save(); c.scale(1, 0.38); c.strokeStyle = 'rgba(255,200,120,0.85)'; c.lineWidth = core * 0.35;
-    c.beginPath(); c.arc(0, 0, core * 2.0, 0, TAU); c.stroke(); c.restore();
-    for (let i = 0; i < 18; i++) { const a = -t * 1.6 + i * 0.35, d = core * (1.4 + ((i * 37) % 10) / 10 * (R0 / core - 1.4) * (1 - ((t * 0.3 + i * 0.13) % 1))); c.fillStyle = 'rgba(255,220,180,0.7)'; c.fillRect(Math.cos(a) * d, Math.sin(a) * d * 0.8, 2.5, 2.5); }
-    c.fillStyle = '#000'; c.beginPath(); c.arc(0, 0, core, 0, TAU); c.fill();
-    c.strokeStyle = 'rgba(255,230,190,0.9)'; c.lineWidth = 2.5; c.beginPath(); c.arc(0, 0, core * 1.06, 0, TAU); c.stroke();
-    c.save(); c.scale(1, 0.38); c.strokeStyle = 'rgba(255,220,150,0.9)'; c.lineWidth = core * 0.25; c.beginPath(); c.arc(0, 0, core * 2.0, 0, Math.PI); c.stroke(); c.restore();
+    const sg = c.createRadialGradient(0, 0, core * 0.7, 0, 0, core * 1.02); sg.addColorStop(0, '#000'); sg.addColorStop(0.85, '#000'); sg.addColorStop(1, 'rgba(0,0,0,0.6)');
+    c.fillStyle = sg; c.beginPath(); c.arc(0, 0, core * 1.02, 0, TAU); c.fill();
+    c.globalCompositeOperation = 'lighter';
+    c.strokeStyle = 'rgba(255,240,215,0.95)'; c.lineWidth = Math.max(2, core * 0.05); c.beginPath(); c.arc(0, 0, core * 1.04, 0, TAU); c.stroke();
+    drawBHDisk(c, core, t, 0, Math.PI);
+    // 吸い込まれていく光の粒（円盤の面にそって渦を巻く）
+    for (let i = 0; i < 14; i++) {
+      const u = (t * 0.25 + i * 0.137) % 1, a = -t * 1.6 + i * 0.45 - u * 3, d = core * (1.3 + (1 - u) * (R0 / core - 1.3) * 0.8);
+      c.fillStyle = `rgba(255,225,190,${0.55 * u})`; c.fillRect(Math.cos(a) * d, Math.sin(a) * d * 0.32, 2.5, 2.5);
+    }
+    c.globalCompositeOperation = 'source-over';
   }
   c.restore();
 }
@@ -2046,6 +2102,9 @@ function renderScene(c, hud) {
   c.setTransform(1, 0, 0, 1, G.shx, G.shy);
   c.drawImage(bgOf(G.k), 0, 0);
   c.save(); rr(c, WATER.x, WATER.y, WATER.w, WATER.h, WATER.r); c.clip();
+  // 批評 r16：宇宙の銀河の群れが枠の線の上にはみ出した → 星と宇宙は枠の内側の縁（16px）より内にだけ描く
+  const inset = id === 'sky' || id === 'cosmos';
+  if (inset) { c.save(); rr(c, WATER.x + 16, WATER.y + 16, WATER.w - 32, WATER.h - 32, WATER.r - 12); c.clip(); }
   if (id === 'pond' || id === 'sea' || id === 'land') {
     if (!cauPat) cauPat = c.createPattern(CAU, 'repeat');
     c.globalCompositeOperation = 'lighter';
@@ -2075,7 +2134,9 @@ function renderScene(c, hud) {
   }
   drawVortex(c, V, t);
   const rc = WD().ripple;
-  for (const r of rings) { const u = r.t / r.life; c.strokeStyle = `rgba(${rc},${(1 - u) * 0.7})`; c.lineWidth = r.w * (1 - u) + 0.5; c.beginPath(); c.arc(r.x, r.y, r.r, 0, TAU); c.stroke(); }
+  // 批評 r16：宇宙なのに水の波紋の細い輪が残る → 星と宇宙では細い輪（しずく・ポイの出入り）は描かない。大きな衝撃波（w ≥10）だけ
+  const space = id === 'sky' || id === 'cosmos';
+  for (const r of rings) { if (space && r.w < 10) continue; const u = r.t / r.life; c.strokeStyle = `rgba(${rc},${(1 - u) * 0.7})`; c.lineWidth = r.w * (1 - u) + 0.5; c.beginPath(); c.arc(r.x, r.y, r.r, 0, TAU); c.stroke(); }
   c.fillStyle = id === 'pond' || id === 'sea' || id === 'land' ?'rgba(0,35,75,0.28)' : 'rgba(0,0,10,0.35)';
   for (const f of fish) drawShadow(c, f, f.x, f.y, f.ang, f.spawn);
   // 太陽の熱の輪
@@ -2134,9 +2195,11 @@ function renderScene(c, hud) {
     c.closePath(); c.fillStyle = 'rgba(200,215,225,0.8)'; c.fill(); c.strokeStyle = 'rgba(90,100,110,0.6)'; c.lineWidth = 1.5; c.stroke();
     c.restore();
   }
+  if (inset) c.restore();
   c.restore(); // 水の clip おわり
 
   // ポイ
+  handAng();
   let px = poi.x, py = poi.y, pr = poi.r;
   if (poi.state === 'enter') { const u = easeOut(poi.enterT); px = lerp(W + 120, poi.x, u); py = lerp(H - 200, poi.y, u); }
   const rim = poi.over > 0 ? `rgb(${Math.round(lerp(214, 255, poi.over))},${Math.round(lerp(38, 30, poi.over))},${Math.round(lerp(31, 30, poi.over))})` : null;
@@ -2158,8 +2221,7 @@ function renderScene(c, hud) {
         c.stroke();
       }
     }
-    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 3;
-    c.beginPath(); c.arc(px, py, pr + 6 + Math.sin(G.realT * 12) * 2, 0, TAU); c.stroke();
+    // 批評 r17 前の採点：沈めたポイのまわりに輪が 3〜4 重で散らかる → 白い揺れの輪はやめる（紙の残りの輪で足りる）
     // 重すぎると縁が赤く脈打つ（このまま上げると破れる）
     if (poi.over > 0) { c.strokeStyle = `rgba(255,50,40,${poi.over * (0.5 + 0.5 * Math.sin(G.realT * 30))})`; c.lineWidth = 10; c.beginPath(); c.arc(px, py, pr + 14, 0, TAU); c.stroke(); }
     if (poi.heat > 0.05) { c.strokeStyle = `rgba(255,150,40,${poi.heat * 0.7})`; c.lineWidth = 8; c.beginPath(); c.arc(px, py, pr + 4, 0, TAU); c.stroke(); }
@@ -2285,8 +2347,13 @@ function drawHand(c) {
   const inShop = (input.away || input.py >= SHOP_Y) && poi.state !== 'dip';
   if (inShop) { drawHandAt(c, input.px + 18, input.py + 34, -0.35, taps.some(t => t.t < 0.15) ? 0.9 : 1); return; }
   if (poi.state === 'torn' || poi.state === 'enter' || G.clear) return;
-  const lift = poi.state === 'dip' ? 1 : 1.06, a = 0.95, L = Math.max(90, poi.r * lift * 1.7);
-  drawHandAt(c, poi.x + Math.cos(a) * (poi.r * lift + L * 0.78), poi.y + Math.sin(a) * (poi.r * lift + L * 0.78), a - Math.PI / 2 - 0.5, 1);
+  const lift = poi.state === 'dip' ? 1 : 1.06, a = poi.ha == null ? 0.95 : poi.ha, L = Math.max(90, poi.r * lift * 1.7);
+  const hy = poi.y + Math.sin(a) * (poi.r * lift + L * 0.78);
+  // 確かめ用：手がボタンの上端（SHOP_Y+8）にかかったら 1 回ごとに記録
+  const over = hy + 55 > SHOP_Y + 8;
+  if (over && !poi.handOver) ev('hand_over', { y: Math.round(hy) });
+  poi.handOver = over;
+  drawHandAt(c, poi.x + Math.cos(a) * (poi.r * lift + L * 0.78), hy, a - Math.PI / 2 - 0.5, 1);
 }
 
 function coinIcon(c, x, y, r) {
@@ -2419,17 +2486,20 @@ function drawShop(c) {
     let sub = maxed ? '最大' : 'Lv ' + (lvOf(i) + 1);
     if (!maxed && i === 0 && nu) sub = '→ ' + nu.name + 'が持てる';
     if (!maxed && i === 1 && nf) sub = '→ ' + nf.name + 'が入る';
-    text(c, sub, 0, y + 123, sub.length > 7 ? 18 : 20, can && !maxed ? '#7a3a10' : ((i === 0 && nu) || (i === 1 && nf) ? '#ffd27a' : '#c8cff0'), can && !maxed ? null : '#1a1030', 4, 'center', '800');
+    // 批評 r16：下の説明文が小さく薄い → 1〜2 段大きく、色を濃く（暗い板では明るく）
+    const subSize = sub.length > 9 ? 20 : sub.length > 7 ? 22 : 24;
+    text(c, sub, 0, y + 123, subSize, can && !maxed ? '#5a2408' : ((i === 0 && nu) || (i === 1 && nf) ? '#ffe08a' : '#eef1ff'), can && !maxed ? null : '#0e0820', 5, 'center', '900');
     if (!maxed) {
       const ps2 = fmt(p); c.font = '900 32px ' + FONT; const w = c.measureText(ps2).width;
       coinIcon(c, -w / 2 - 14, y + 150, 13);
       text(c, ps2, 8, y + 151, 32, deny[i] > 0 ? '#ff4a3a' : can ? '#4a1e00' : '#ffd23a', can ? null : '#000', 6);
     }
-    // おまけの札（値引き中）
+    // おまけの札（値引き中）。批評 r16：角に詰まって見えた → ボタンの上の縁の真ん中に、のれんのように掛ける
     if (!maxed && Math.round((1 - omake()) * 100) >= 1) {
-      c.save(); c.translate(x + b.w - 50, y + 14); c.rotate(0.18);
-      c.fillStyle = '#e8262a'; rr(c, -46, -16, 92, 32, 10); c.fill(); c.lineWidth = 2.5; c.strokeStyle = '#fff3c0'; c.stroke();
-      text(c, 'おまけ -' + Math.round((1 - omake()) * 100) + '%', 0, 1, 16, '#ffffff', null, 0, 'center', '900');
+      c.save(); c.translate(0, y - 6);
+      c.fillStyle = 'rgba(0,0,0,0.35)'; rr(c, -60, -13, 120, 30, 15); c.fill();
+      c.fillStyle = '#e8262a'; rr(c, -60, -15, 120, 30, 15); c.fill(); c.lineWidth = 2.5; c.strokeStyle = '#fff3c0'; c.stroke();
+      text(c, 'おまけ -' + Math.round((1 - omake()) * 100) + '%', 0, 1, 19, '#ffffff', '#7a0a0a', 3, 'center', '900');
       c.restore();
     }
     if (boughtFx[i] > 0) { c.globalAlpha = boughtFx[i] / 0.6; c.fillStyle = '#ffffff'; rr(c, x, y, b.w, bh, 24); c.fill(); c.globalAlpha = 1; }
