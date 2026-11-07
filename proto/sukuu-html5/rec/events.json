@@ -1,37 +1,37 @@
 [
 {
-"t": 0.433,
+"t": 0.467,
 "type": "scoop",
-"n": 5,
-"value": 25,
+"n": 2,
+"value": 28,
 "tier": 0
 },
 {
-"t": 1.1,
+"t": 1.167,
 "type": "scoop",
-"n": 3,
-"value": 9,
+"n": 1,
+"value": 7,
 "tier": 0
 },
 {
-"t": 1.733,
+"t": 1.533,
 "type": "coin",
-"v": 5
+"v": 14
 },
 {
-"t": 1.8,
+"t": 1.533,
+"type": "afford",
+"coins": 14
+},
+{
+"t": 1.867,
 "type": "scoop",
-"n": 6,
-"value": 36,
+"n": 2,
+"value": 28,
 "tier": 0
 },
 {
-"t": 1.8,
-"type": "afford",
-"coins": 20
-},
-{
-"t": 2.6,
+"t": 2.567,
 "type": "buy",
 "item": "size",
 "lv": 1,
@@ -39,747 +39,687 @@
 },
 {
 "t": 3.2,
+"type": "scoop",
+"n": 3,
+"value": 63,
+"tier": 0
+},
+{
+"t": 4.033,
 "type": "buy",
 "item": "dur",
 "lv": 1,
 "price": 12
 },
 {
-"t": 3.733,
+"t": 4.633,
 "type": "buy",
 "item": "size",
 "lv": 2,
 "price": 29
 },
 {
-"t": 4.5,
-"type": "scoop",
-"n": 9,
-"value": 81,
-"tier": 0
-},
-{
-"t": 5.367,
-"type": "scoop",
-"n": 6,
-"value": 36,
-"tier": 0
-},
-{
-"t": 6,
-"type": "scoop",
-"n": 5,
-"value": 25,
-"tier": 0
-},
-{
-"t": 6.567,
-"type": "tear",
-"n": 5
-},
-{
-"t": 7.967,
-"type": "scoop",
-"n": 4,
-"value": 16,
-"tier": 0
-},
-{
-"t": 8.7,
-"type": "scoop",
-"n": 7,
-"value": 49,
-"tier": 0
-},
-{
-"t": 10.4,
-"type": "scoop",
-"n": 2,
-"value": 4,
-"tier": 0
-},
-{
-"t": 11.833,
-"type": "tear",
-"n": 4
-},
-{
-"t": 13.2,
-"type": "scoop",
-"n": 2,
-"value": 4,
-"tier": 0
-},
-{
-"t": 13.9,
-"type": "tier",
-"tier": 1,
-"name": "出目金",
-"price": 200
-},
-{
-"t": 14.667,
+"t": 5.2,
 "type": "buy",
 "item": "dur",
 "lv": 2,
 "price": 19
 },
 {
-"t": 15.533,
-"type": "scoop",
-"n": 12,
-"value": 320,
-"tier": 1
-},
-{
-"t": 16.333,
-"type": "scoop",
-"n": 18,
-"value": 180,
-"tier": 0
-},
-{
-"t": 17.267,
-"type": "scoop",
-"n": 14,
-"value": 190,
-"tier": 1
-},
-{
-"t": 18.1,
+"t": 5.767,
 "type": "buy",
 "item": "size",
 "lv": 3,
 "price": 46
 },
 {
-"t": 18.7,
+"t": 8.1,
+"type": "tear",
+"n": 3
+},
+{
+"t": 9.5,
+"type": "scoop",
+"n": 5,
+"value": 175,
+"tier": 0
+},
+{
+"t": 10.3,
+"type": "scoop",
+"n": 3,
+"value": 63,
+"tier": 0
+},
+{
+"t": 11.067,
+"type": "scoop",
+"n": 3,
+"value": 63,
+"tier": 0
+},
+{
+"t": 12.067,
+"type": "scoop",
+"n": 4,
+"value": 112,
+"tier": 0
+},
+{
+"t": 12.767,
+"type": "tier",
+"tier": 1,
+"name": "出目金",
+"price": 250
+},
+{
+"t": 12.767,
+"type": "banner",
+"rect": {
+"x": 40,
+"y": 44,
+"w": 640,
+"h": 112
+},
+"water": {
+"x": 36,
+"y": 192,
+"w": 648,
+"h": 856
+}
+},
+{
+"t": 13.633,
+"type": "scoop",
+"n": 4,
+"value": 112,
+"tier": 0
+},
+{
+"t": 14.467,
 "type": "buy",
 "item": "dur",
 "lv": 3,
 "price": 31
 },
 {
-"t": 19.267,
+"t": 15.067,
 "type": "buy",
 "item": "size",
 "lv": 4,
 "price": 74
 },
 {
-"t": 19.867,
+"t": 15.633,
 "type": "buy",
 "item": "dur",
 "lv": 4,
 "price": 49
 },
 {
-"t": 20.433,
+"t": 16.2,
 "type": "buy",
 "item": "size",
 "lv": 5,
 "price": 118
 },
 {
-"t": 21,
+"t": 17.067,
+"type": "scoop",
+"n": 7,
+"value": 805,
+"tier": 1
+},
+{
+"t": 17.9,
+"type": "scoop",
+"n": 6,
+"value": 648,
+"tier": 1
+},
+{
+"t": 18.667,
 "type": "buy",
 "item": "dur",
 "lv": 5,
 "price": 79
 },
 {
-"t": 21.567,
+"t": 19.2,
 "type": "buy",
 "item": "size",
 "lv": 6,
 "price": 189
 },
 {
-"t": 22.3,
-"type": "scoop",
-"n": 11,
-"value": 460,
-"tier": 1
-},
-{
-"t": 23.067,
-"type": "scoop",
-"n": 14,
-"value": 290,
-"tier": 1
-},
-{
-"t": 24.167,
+"t": 19.833,
 "type": "buy",
 "item": "dur",
 "lv": 6,
 "price": 126
 },
 {
-"t": 24.667,
+"t": 20.367,
 "type": "buy",
 "item": "size",
 "lv": 7,
 "price": 302
 },
 {
-"t": 25.267,
-"type": "scoop",
-"n": 13,
-"value": 530,
-"tier": 1
-},
-{
-"t": 26.133,
+"t": 20.967,
 "type": "buy",
 "item": "dur",
 "lv": 7,
 "price": 201
 },
 {
-"t": 27,
-"type": "buy",
-"item": "dur",
-"lv": 8,
-"price": 322
-},
-{
-"t": 28,
-"type": "scoop",
-"n": 20,
-"value": 400,
-"tier": 1
-},
-{
-"t": 28.967,
-"type": "scoop",
-"n": 11,
-"value": 310,
-"tier": 1
-},
-{
-"t": 29.867,
+"t": 21.5,
 "type": "buy",
 "item": "size",
 "lv": 8,
 "price": 483
 },
 {
-"t": 30.7,
+"t": 22.033,
+"type": "scoop",
+"n": 6,
+"value": 252,
+"tier": 0
+},
+{
+"t": 23,
+"type": "scoop",
+"n": 6,
+"value": 846,
+"tier": 1
+},
+{
+"t": 23.767,
+"type": "buy",
+"item": "dur",
+"lv": 8,
+"price": 322
+},
+{
+"t": 24.333,
 "type": "buy",
 "item": "dur",
 "lv": 9,
 "price": 515
 },
 {
-"t": 31.467,
-"type": "scoop",
-"n": 14,
-"value": 240,
-"tier": 1
-},
-{
-"t": 32.633,
-"type": "scoop",
-"n": 12,
-"value": 270,
-"tier": 1
-},
-{
-"t": 33.533,
-"type": "scoop",
-"n": 16,
-"value": 410,
-"tier": 1
-},
-{
-"t": 34.333,
+"t": 24.933,
 "type": "scoop",
 "n": 8,
-"value": 264,
+"value": 1240,
 "tier": 1
 },
 {
-"t": 34.967,
+"t": 25.7,
 "type": "scoop",
-"n": 7,
-"value": 119,
-"tier": 1
+"n": 2,
+"value": 28,
+"tier": 0
 },
 {
-"t": 35.733,
+"t": 26.6,
 "type": "buy",
 "item": "size",
 "lv": 9,
 "price": 773
 },
 {
-"t": 36.433,
-"type": "scoop",
-"n": 13,
-"value": 230,
-"tier": 1
-},
-{
-"t": 37.3,
-"type": "scoop",
-"n": 8,
-"value": 224,
-"tier": 1
-},
-{
-"t": 38.267,
-"type": "scoop",
-"n": 9,
-"value": 261,
-"tier": 1
-},
-{
-"t": 39.067,
-"type": "scoop",
-"n": 7,
-"value": 189,
-"tier": 1
-},
-{
-"t": 39.867,
-"type": "scoop",
-"n": 15,
-"value": 400,
-"tier": 1
-},
-{
-"t": 40.8,
-"type": "scoop",
-"n": 13,
-"value": 280,
-"tier": 1
-},
-{
-"t": 41.667,
-"type": "scoop",
-"n": 10,
-"value": 250,
-"tier": 1
-},
-{
-"t": 42.3,
-"type": "scoop",
-"n": 6,
-"value": 96,
-"tier": 1
-},
-{
-"t": 43.167,
-"type": "tier",
-"tier": 2,
-"name": "鯉",
-"price": 2000
-},
-{
-"t": 44.133,
-"type": "scoop",
-"n": 15,
-"value": 3270,
-"tier": 2
-},
-{
-"t": 44.867,
-"type": "scoop",
-"n": 16,
-"value": 1870,
-"tier": 2
-},
-{
-"t": 45.7,
-"type": "scoop",
-"n": 15,
-"value": 1670,
-"tier": 2
-},
-{
-"t": 46.433,
-"type": "buy",
-"item": "size",
-"lv": 10,
-"price": 1237
-},
-{
-"t": 46.967,
+"t": 27.2,
 "type": "buy",
 "item": "dur",
 "lv": 10,
 "price": 825
 },
 {
-"t": 47.633,
+"t": 28.133,
 "type": "scoop",
-"n": 16,
-"value": 1530,
-"tier": 2
+"n": 5,
+"value": 670,
+"tier": 1
 },
 {
-"t": 48.5,
+"t": 28.967,
+"type": "scoop",
+"n": 6,
+"value": 846,
+"tier": 1
+},
+{
+"t": 29.767,
+"type": "scoop",
+"n": 6,
+"value": 648,
+"tier": 1
+},
+{
+"t": 30.567,
 "type": "buy",
 "item": "size",
-"lv": 11,
-"price": 1979
+"lv": 10,
+"price": 1237
 },
 {
-"t": 49.1,
+"t": 31.1,
+"type": "scoop",
+"n": 10,
+"value": 1690,
+"tier": 1
+},
+{
+"t": 31.867,
+"type": "scoop",
+"n": 2,
+"value": 160,
+"tier": 1
+},
+{
+"t": 32.667,
+"type": "scoop",
+"n": 8,
+"value": 976,
+"tier": 1
+},
+{
+"t": 33.433,
+"type": "scoop",
+"n": 5,
+"value": 670,
+"tier": 1
+},
+{
+"t": 34.233,
+"type": "tier",
+"tier": 2,
+"name": "鯉",
+"price": 3000
+},
+{
+"t": 34.233,
+"type": "banner",
+"rect": {
+"x": 40,
+"y": 44,
+"w": 640,
+"h": 112
+},
+"water": {
+"x": 36,
+"y": 192,
+"w": 648,
+"h": 856
+}
+},
+{
+"t": 35.033,
 "type": "buy",
 "item": "dur",
 "lv": 11,
 "price": 1319
 },
 {
-"t": 49.667,
+"t": 36,
+"type": "scoop",
+"n": 6,
+"value": 5280,
+"tier": 2
+},
+{
+"t": 36.933,
+"type": "scoop",
+"n": 14,
+"value": 7430,
+"tier": 2
+},
+{
+"t": 37.7,
+"type": "scoop",
+"n": 4,
+"value": 1016,
+"tier": 2
+},
+{
+"t": 38.567,
 "type": "buy",
 "item": "size",
-"lv": 12,
-"price": 3167
+"lv": 11,
+"price": 1979
 },
 {
-"t": 50.433,
+"t": 39.167,
 "type": "scoop",
-"n": 18,
-"value": 2040,
+"n": 9,
+"value": 2898,
 "tier": 2
 },
 {
-"t": 51.3,
+"t": 40.067,
 "type": "scoop",
-"n": 13,
-"value": 2130,
+"n": 7,
+"value": 2618,
 "tier": 2
 },
 {
-"t": 51.967,
+"t": 40.933,
 "type": "scoop",
-"n": 13,
-"value": 1990,
+"n": 5,
+"value": 2270,
 "tier": 2
 },
 {
-"t": 52.833,
-"type": "scoop",
-"n": 10,
-"value": 980,
-"tier": 2
+"t": 41.667,
+"type": "tier",
+"tier": 3,
+"name": "鯨",
+"price": 16000
 },
 {
-"t": 53.667,
+"t": 41.667,
+"type": "banner",
+"rect": {
+"x": 40,
+"y": 44,
+"w": 640,
+"h": 112
+},
+"water": {
+"x": 36,
+"y": 192,
+"w": 648,
+"h": 856
+}
+},
+{
+"t": 42.533,
 "type": "buy",
 "item": "dur",
 "lv": 12,
 "price": 2111
 },
 {
-"t": 54.233,
+"t": 43.467,
+"type": "scoop",
+"n": 7,
+"value": 13027,
+"tier": 3
+},
+{
+"t": 44.3,
+"type": "scoop",
+"n": 8,
+"value": 13928,
+"tier": 3
+},
+{
+"t": 45.167,
 "type": "buy",
 "item": "dur",
 "lv": 13,
 "price": 3378
 },
 {
-"t": 55.2,
-"type": "scoop",
-"n": 17,
-"value": 2270,
-"tier": 2
-},
-{
-"t": 55.867,
-"type": "scoop",
-"n": 9,
-"value": 1008,
-"tier": 2
-},
-{
-"t": 56.733,
-"type": "scoop",
-"n": 19,
-"value": 1460,
-"tier": 2
-},
-{
-"t": 57.533,
-"type": "scoop",
-"n": 19,
-"value": 1710,
-"tier": 2
-},
-{
-"t": 58.333,
-"type": "buy",
-"item": "size",
-"lv": 13,
-"price": 5067
-},
-{
-"t": 59.2,
-"type": "scoop",
-"n": 10,
-"value": 740,
-"tier": 2
-},
-{
-"t": 59.9,
-"type": "scoop",
-"n": 12,
-"value": 1440,
-"tier": 2
-},
-{
-"t": 60.8,
-"type": "scoop",
-"n": 18,
-"value": 2380,
-"tier": 2
-},
-{
-"t": 61.7,
-"type": "scoop",
-"n": 10,
-"value": 1320,
-"tier": 2
-},
-{
-"t": 62.4,
-"type": "scoop",
-"n": 8,
-"value": 416,
-"tier": 2
-},
-{
-"t": 63.333,
-"type": "scoop",
-"n": 11,
-"value": 1770,
-"tier": 2
-},
-{
-"t": 64.033,
-"type": "scoop",
-"n": 8,
-"value": 928,
-"tier": 2
-},
-{
-"t": 64.833,
-"type": "scoop",
-"n": 9,
-"value": 873,
-"tier": 2
-},
-{
-"t": 65.767,
-"type": "scoop",
-"n": 14,
-"value": 1560,
-"tier": 2
-},
-{
-"t": 66.633,
-"type": "scoop",
-"n": 14,
-"value": 1510,
-"tier": 2
-},
-{
-"t": 67.5,
-"type": "tier",
-"tier": 3,
-"name": "鯨",
-"price": 12000
-},
-{
-"t": 68.6,
-"type": "scoop",
-"n": 14,
-"value": 14540,
-"tier": 3
-},
-{
-"t": 69.4,
-"type": "scoop",
-"n": 17,
-"value": 11640,
-"tier": 3
-},
-{
-"t": 70.033,
-"type": "scoop",
-"n": 11,
-"value": 4900,
-"tier": 3
-},
-{
-"t": 70.833,
+"t": 45.733,
 "type": "buy",
 "item": "dur",
 "lv": 14,
 "price": 5404
 },
 {
-"t": 71.4,
+"t": 46.3,
 "type": "buy",
 "item": "dur",
 "lv": 15,
 "price": 8647
 },
 {
-"t": 71.967,
+"t": 47.067,
+"type": "scoop",
+"n": 5,
+"value": 14105,
+"tier": 3
+},
+{
+"t": 47.833,
+"type": "scoop",
+"n": 8,
+"value": 4064,
+"tier": 2
+},
+{
+"t": 48.533,
+"type": "scoop",
+"n": 7,
+"value": 11676,
+"tier": 3
+},
+{
+"t": 49.367,
+"type": "scoop",
+"n": 6,
+"value": 9768,
+"tier": 3
+},
+{
+"t": 50.267,
 "type": "buy",
 "item": "dur",
 "lv": 16,
 "price": 13835
 },
 {
-"t": 72.533,
-"type": "scoop",
-"n": 17,
-"value": 15500,
-"tier": 3
-},
-{
-"t": 73.433,
-"type": "scoop",
-"n": 22,
-"value": 11010,
-"tier": 3
-},
-{
-"t": 74.2,
-"type": "scoop",
-"n": 7,
-"value": 3262,
-"tier": 3
-},
-{
-"t": 74.967,
+"t": 50.833,
 "type": "buy",
 "item": "dur",
 "lv": 17,
 "price": 22136
 },
 {
-"t": 75.5,
+"t": 51.6,
 "type": "scoop",
-"n": 14,
-"value": 5950,
+"n": 8,
+"value": 13664,
 "tier": 3
 },
 {
-"t": 76.3,
+"t": 52.433,
 "type": "scoop",
-"n": 12,
-"value": 5540,
+"n": 6,
+"value": 9966,
 "tier": 3
 },
 {
-"t": 77.267,
+"t": 53.267,
 "type": "scoop",
-"n": 23,
-"value": 6970,
+"n": 8,
+"value": 26352,
 "tier": 3
 },
 {
-"t": 78,
+"t": 54.1,
 "type": "scoop",
 "n": 4,
-"value": 192,
-"tier": 2
-},
-{
-"t": 78.833,
-"type": "scoop",
-"n": 19,
-"value": 2000,
-"tier": 2
-},
-{
-"t": 79.7,
-"type": "scoop",
-"n": 7,
-"value": 3535,
+"value": 11388,
 "tier": 3
 },
 {
-"t": 80.567,
-"type": "scoop",
-"n": 7,
-"value": 3535,
-"tier": 3
-},
-{
-"t": 81.367,
+"t": 54.967,
 "type": "buy",
 "item": "dur",
 "lv": 18,
 "price": 35418
 },
 {
-"t": 82.233,
+"t": 55.933,
 "type": "scoop",
-"n": 18,
-"value": 15020,
+"n": 9,
+"value": 28269,
 "tier": 3
 },
 {
-"t": 83.2,
+"t": 56.767,
 "type": "scoop",
-"n": 18,
-"value": 15360,
+"n": 5,
+"value": 10035,
 "tier": 3
 },
 {
-"t": 84.067,
-"type": "scoop",
-"n": 16,
-"value": 1970,
-"tier": 2
+"t": 57.5,
+"type": "buy",
+"item": "dur",
+"lv": 19,
+"price": 56668
 },
 {
-"t": 84.967,
+"t": 58.233,
 "type": "scoop",
-"n": 11,
-"value": 4750,
+"n": 13,
+"value": 37810,
 "tier": 3
 },
 {
-"t": 85.833,
+"t": 59.1,
+"type": "scoop",
+"n": 2,
+"value": 2814,
+"tier": 3
+},
+{
+"t": 59.867,
+"type": "scoop",
+"n": 9,
+"value": 29709,
+"tier": 3
+},
+{
+"t": 60.633,
 "type": "scoop",
 "n": 6,
-"value": 798,
+"value": 2964,
 "tier": 2
 },
 {
-"t": 86.767,
+"t": 61.467,
+"type": "buy",
+"item": "dur",
+"lv": 20,
+"price": 90669
+},
+{
+"t": 62.1,
 "type": "scoop",
-"n": 18,
-"value": 10530,
+"n": 10,
+"value": 33080,
 "tier": 3
 },
 {
-"t": 87.633,
+"t": 62.9,
+"type": "scoop",
+"n": 4,
+"value": 5948,
+"tier": 3
+},
+{
+"t": 63.767,
 "type": "scoop",
 "n": 7,
-"value": 3535,
+"value": 11676,
 "tier": 3
 },
 {
-"t": 88.433,
+"t": 64.6,
 "type": "scoop",
-"n": 7,
-"value": 3738,
+"n": 5,
+"value": 16035,
 "tier": 3
 },
 {
-"t": 89.367,
+"t": 65.367,
 "type": "scoop",
-"n": 19,
-"value": 10250,
+"n": 10,
+"value": 17550,
+"tier": 3
+},
+{
+"t": 66.233,
+"type": "scoop",
+"n": 8,
+"value": 15208,
+"tier": 3
+},
+{
+"t": 67.167,
+"type": "scoop",
+"n": 8,
+"value": 26352,
+"tier": 3
+},
+{
+"t": 68.033,
+"type": "scoop",
+"n": 6,
+"value": 18324,
+"tier": 3
+},
+{
+"t": 68.733,
+"type": "scoop",
+"n": 4,
+"value": 7228,
+"tier": 3
+},
+{
+"t": 69.5,
+"type": "reveal",
+"price": 120000
+},
+{
+"t": 74.633,
+"type": "reveal_end"
+},
+{
+"t": 75.3,
+"type": "scoop",
+"n": 8,
+"value": 27632,
+"tier": 3
+},
+{
+"t": 76.2,
+"type": "scoop",
+"n": 8,
+"value": 26352,
+"tier": 3
+},
+{
+"t": 77,
+"type": "scoop",
+"n": 4,
+"value": 7360,
+"tier": 3
+},
+{
+"t": 77.8,
+"type": "scoop",
+"n": 11,
+"value": 33480,
+"tier": 3
+},
+{
+"t": 78.6,
+"type": "scoop",
+"n": 3,
+"value": 4341,
+"tier": 3
+},
+{
+"t": 79.7,
+"type": "scoop",
+"n": 14,
+"value": 23950,
 "tier": 3
 }
 ]

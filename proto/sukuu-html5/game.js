@@ -9,7 +9,7 @@ const Q = new URLSearchParams(location.search);
 const BOT = Q.get('bot') === '1';
 const FIXED = Q.get('fixed') === '1';
 const SEED = parseInt(Q.get('seed') || '1', 10) || 1;
-const FISH0 = parseInt(Q.get('fish') || '60', 10);
+const FISH0 = parseInt(Q.get('fish') || '18', 10);
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","YuGothic","Meiryo",sans-serif';
 
 const TUB = { x: 22, y: 178, w: 676, h: 884, r: 64 };
@@ -17,18 +17,18 @@ const SHOP_Y = 1080;
 const COUNTER = { x: 700, y: 66 };
 
 const TIERS = [
-  { name: '金魚',   r: 20,  val: 1,   w: 6,   spd: 90, poiR: 70,  cm: 0.8 },
-  { name: '出目金', r: 28,  val: 6,   w: 13,  spd: 76, poiR: 100, cm: 1.3 },
-  { name: '鯉',     r: 46,  val: 40,  w: 40,  spd: 62, poiR: 136, cm: 4 },
-  { name: '鯨',     r: 105, val: 450, w: 150, spd: 44, poiR: 190, cm: 150 },
+  { name: '金魚',   r: 34,  val: 7,    w: 6,   spd: 80, poiR: 92,  cm: 0.6 },
+  { name: '出目金', r: 44,  val: 40,   w: 13,  spd: 68, poiR: 122, cm: 1.0 },
+  { name: '鯉',     r: 66,  val: 200,  w: 40,  spd: 56, poiR: 160, cm: 3 },
+  { name: '鯨',     r: 120, val: 1400, w: 150, spd: 40, poiR: 205, cm: 120 },
 ];
-const TIER_PRICE = [200, 2000, 12000];
+const TIER_PRICE = [250, 3000, 16000, 120000];   // 最後は「？？？」（池が星に見える引き）
 const DUR_MUL = [1, 2.2, 6, 22];
 const POP = [
   [FISH0],
-  [Math.round(FISH0 * 0.7), Math.round(FISH0 * 0.3)],
-  [Math.round(FISH0 * 0.5), Math.round(FISH0 * 0.27), 12],
-  [Math.round(FISH0 * 0.45), Math.round(FISH0 * 0.22), 10, 4],
+  [Math.round(FISH0 * 0.67), Math.round(FISH0 * 0.33)],
+  [Math.round(FISH0 * 0.45), Math.round(FISH0 * 0.28), 5],
+  [Math.round(FISH0 * 0.33), Math.round(FISH0 * 0.22), 4, 3],
 ];
 
 // ---------------------------------------------------------------- 乱数（決定的）
@@ -64,10 +64,13 @@ const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 function fit() {
   if (FIXED) { cv.style.width = W + 'px'; cv.style.height = H + 'px'; return; }
-  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  // iPhone の Safari はツールバーで高さが変わるので visualViewport を使う
+  const vv = window.visualViewport, vw = vv ? vv.width : window.innerWidth, vh = vv ? vv.height : window.innerHeight;
+  const s = Math.min(vw / W, vh / H);
   cv.style.width = Math.floor(W * s) + 'px'; cv.style.height = Math.floor(H * s) + 'px';
 }
 fit(); window.addEventListener('resize', fit);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
 
 function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 function rr(c, x, y, w, h, r) {
@@ -246,6 +249,8 @@ function initAudio() {
   if (AC || FIXED) return;
   try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
 }
+// iOS はタップのたびに resume しないと音が止まったままになることがある
+function wakeAudio() { initAudio(); if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) { } } }
 function tone(f0, f1, dur, type, vol, delay) {
   if (!AC) return;
   try {
@@ -303,6 +308,7 @@ function pDown(x, y) {
   input.px = x; input.py = y;
   const si = shopHit(x, y);
   taps.push({ x, y, t: 0 });
+  if (G.reveal) { if (G.reveal.t > REVEAL_LEN) G.reveal.tap = true; return; }
   if (si >= 0) { buy(si); return; }
   if (y >= SHOP_Y) return;
   input.down = true; poi.tx = x; poi.ty = y;
@@ -318,7 +324,7 @@ window.__input = { down: pDown, move: pMove, up: pUp };
 
 function toLogical(e) { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * W / b.width, (e.clientY - b.top) * H / b.height]; }
 if (!BOT) {
-  cv.addEventListener('pointerdown', e => { initAudio(); e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) { } const [x, y] = toLogical(e); pDown(x, y); });
+  cv.addEventListener('pointerdown', e => { wakeAudio(); e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) { } const [x, y] = toLogical(e); pDown(x, y); });
   cv.addEventListener('pointermove', e => { const [x, y] = toLogical(e); pMove(x, y); });
   cv.addEventListener('pointerup', e => { pUp(); });
   cv.addEventListener('pointercancel', e => { pUp(); });
@@ -335,37 +341,52 @@ const press = [0, 0, 0], deny = [0, 0, 0], boughtFx = [0, 0, 0];
 function price(i) {
   if (i === 0) return Math.round(12 * Math.pow(1.6, G.lv.dur));
   if (i === 1) return sizeMaxed() ? Infinity : Math.round(18 * Math.pow(1.6, G.lv.size));
-  return G.tier >= 3 ? Infinity : TIER_PRICE[G.tier];
+  if (G.tier >= 3 && G.revealed) return Infinity;
+  return TIER_PRICE[G.tier];
 }
+// ---------------------------------------------------------------- 種明かしの気配：カメラが引いて、池が星に見える
+function startReveal(p) {
+  G.revealed = true;
+  G.reveal = { t: 0 };
+  G.total = null; G.banner = null;
+  input.down = false; if (poi.state === 'dip') poi.state = 'hover';
+  G.flash = 0.7;
+  ev('reveal', { price: p });
+  SFX.tier();
+}
+const REVEAL_LEN = 3.6;
 function buy(i) {
   press[i] = 0.14;
   const p = price(i);
   if (G.coins < p) { deny[i] = 0.35; return false; }
   G.coins -= p;
   const b = btnRect(i); boughtFx[i] = 0.6;
-  floatText('LV UP!', b.x + b.w / 2, b.y - 26, 46, '#ffffff', '#1a8a2a', 0.8, -0.08);
-  floatText('-' + fmt(p), COUNTER.x - 90, COUNTER.y + 62, 38, '#ff7a6a', '#300', 0.7, 0);
+  // 池の上に文字は出さない（ボタンが光る・ポイが光って膨らむ・コインが減る だけで見せる）
+  G.spent = 0.6;
   addShake(4);
   sparks(b.x + b.w / 2, b.y + 50, 26, '#ffe14a', 520);
   SFX.buy();
   if (i === 0) {
     G.lv.dur++; const old = poi.max; poi.max = poiMax(); poi.wet = Math.max(0, poi.wet - (poi.max - old));
-    floatText('紙 ×1.3', poi.x, poi.y - poi.r - 34, 58, '#ffffff', '#1a5fd0', 1.0, -0.06);
     rings.push({ x: poi.x, y: poi.y, r: poi.r, vr: 160, life: 0.5, t: 0, w: 8 });
+    poi.glow = 1;
     ev('buy', { item: 'dur', lv: G.lv.dur, price: p });
   } else if (i === 1) {
-    const oldCm = cmOf(poi.rT);
-    G.lv.size++; poi.rT = poiR(); poi.rv += 260;
-    floatText(fmtCm(oldCm) + '→' + fmtCm(cmOf(poi.rT)), poi.x, poi.y - poi.r - 34, 54, '#ffffff', '#d0301a', 1.0, -0.06);
+    G.lv.size++; poi.rT = poiR(); poi.rv += 260; poi.glow = 1;
     ev('buy', { item: 'size', lv: G.lv.size, price: p });
-  } else tierUp(p);
+  } else if (G.tier >= 3) startReveal(p);
+  else tierUp(p);
   return true;
 }
+// 帯は池の外（上の帯）に出す。ポイ・獲物に重ねない
+const BANNER_RECT = { x: 40, y: 44, w: 640, h: 112 };
 function tierUp(p) {
   G.tier++;
   ev('tier', { tier: G.tier, name: TIERS[G.tier].name, price: p });
-  G.slowmo = 0.3; G.flash = 1; addShake(16);
-  G.banner = { s: TIERS[G.tier].name + 'がすくえる！', sub: 'ポイも大きくなった', t: 0, life: 1.4, tier: G.tier };
+  G.slowmo = 0.3; G.flash = 0.6; addShake(16);
+  G.total = null;
+  G.banner = { s: TIERS[G.tier].name + 'がすくえる！', t: 0, life: 1.3, tier: G.tier };
+  ev('banner', { rect: BANNER_RECT, water: { x: WATER.x, y: WATER.y, w: WATER.w, h: WATER.h } });
   poi.rT = poiR(); poi.rv += 600;
   poi.max = poiMax(); poi.wet = 0; poi.dmg = 0; poi.cracks = makeCracks();
   SFX.tier();
@@ -405,16 +426,17 @@ function lift() {
   });
   G.scoops++;
   ev('scoop', { n, value: total, tier: Math.max(...caught.map(f => f.tier)) });
-  addShake(3 + Math.min(10, n * 1.2));
-  if (n >= 2) {
-    const big = n >= 5;
-    // 「×n」と合計を縦に積む（重ならない位置）。Balatro のように数字を主役に
-    const cx = clamp(poi.x, 170, W - 170), cy = clamp(poi.y - poi.r - 40, 360, 1000);
-    texts.push({ s: '×' + n, x: cx, y: cy, size: 80 + Math.min(50, n * 5), fill: big ? '#fff04a' : '#ffffff', stroke: '#e0241a', life: 1.0, t: 0, rot: -0.12, combo: true });
-    texts.push({ s: '+' + fmt(total), x: cx, y: cy - 110, size: 70 + Math.min(40, Math.log10(total + 1) * 12), fill: '#ffe14a', stroke: '#6a1a00', life: 1.1, t: 0, rot: 0.05, combo: true });
-    if (big) { G.hitstop = 0.07; floatText(n >= 10 ? '大漁！！' : '大漁！', poi.x, poi.y + poi.r + 40, 64, '#ffffff', '#1a3fd0', 1.0, 0.06); }
-    SFX.combo(n);
-  }
+  addShake(4 + Math.min(12, n * 2));
+  // すくった瞬間：ポイがしなる＋水柱＋一瞬止まる
+  poi.squash = 1;
+  splash(poi.x, poi.y, 26 + n * 6, 1.5 + n * 0.15);
+  G.hitstop = n >= 2 ? 0.08 : 0.04;
+  // 数字は 1 回すくうごとに 1 つだけ。魚が飛んでいって着くたびに数え上がる
+  const top = poi.y - poi.r - 70 > 300;
+  // 帯が出ている間は合計を出さない（文字は常に 1 つだけ）
+  G.total = G.banner ? null : { target: total, shown: 0, pending: n, x: clamp(poi.x, 200, W - 200), y: top ? poi.y - poi.r - 70 : poi.y + poi.r + 80, t: 0, end: 0 };
+  texts.length = 0;
+  if (n >= 2) SFX.combo(n);
   SFX.plop(0);
 }
 function tear(caught) {
@@ -427,7 +449,8 @@ function tear(caught) {
   shards.length = 0;
   for (const side of [-1, 1]) shards.push({ side, a, jag, x: poi.x, y: poi.y, r: poi.r, vx: Math.cos(a + Math.PI / 2) * side * 90, vy: Math.sin(a + Math.PI / 2) * side * 90 + 30, rot: 0, vr: side * 1.5, t: 0, wet: 1 });
   for (let i = 0; i < 18; i++) { const b = R(0, 6.28), d = R(0, poi.r); parts.push({ k: 'shred', x: poi.x + Math.cos(b) * d, y: poi.y + Math.sin(b) * d, z: 10, vx: Math.cos(b) * R(80, 260), vy: Math.sin(b) * R(80, 260), vz: R(150, 380), s: R(4, 10), c: '#eef3f6', life: 2, rot: R(0, 6) }); }
-  floatText('ビリッ！', poi.x, poi.y - poi.r - 30, 96, '#ffffff', '#c01010', 0.9, -0.15);
+  G.total = null; texts.length = 0;
+  floatText('ビリッ！', poi.x, clamp(poi.y - poi.r - 30, 300, 1000), 96, '#ffffff', '#c01010', 0.9, -0.15);
   (caught || []).forEach(f => { f.alert = 0; f.flee = 1.2; splash(f.x, f.y, 6, 0.8); });
   splash(poi.x, poi.y, 22, 1.3);
 }
@@ -439,6 +462,14 @@ function update(dt) {
   if (G.slowmo > 0) { G.slowmo -= dt; sdt = dt * 0.2; }
   if (G.hitstop > 0) { G.hitstop -= dt; sdt = 0; }
   G.simT += sdt;
+  poi.squash = Math.max(0, (poi.squash || 0) - dt * 2.2);
+  poi.glow = Math.max(0, (poi.glow || 0) - dt * 2);
+  G.spent = Math.max(0, (G.spent || 0) - dt);
+  if (G.reveal) {
+    G.reveal.t += dt;
+    if (G.reveal.t > REVEAL_LEN + 1.5 && (BOT || G.reveal.tap)) { G.reveal = null; ev('reveal_end'); }
+    if (G.reveal) { G.flash = Math.max(0, G.flash - dt * 2.6); G.shake *= Math.exp(-dt * 12); G.shx = G.shy = 0; return; }
+  }
 
   if (BOT) botUpdate(sdt || dt * 0.2);
 
@@ -495,30 +526,37 @@ function update(dt) {
   // 持ち上げた魚
   for (let i = lifted.length - 1; i >= 0; i--) {
     const L = lifted[i]; L.t += sdt;
-    if (L.t >= 0.34) {
-      const x = poi.x + L.dx, y = poi.y + L.dy - 24;
-      pops.push({ v: L.v, x, y, sx: x, sy: y, t: 0, vx: R(-60, 60), vy: R(-260, -180), big: L.f.tier, seq: L.i, k: L.n >= 6 ? 0.72 : 1 });
-      sparks(x, y, 6 + L.f.tier * 6, L.f.tier >= 2 ? '#ffd23a' : '#ffffff', 260 + L.f.tier * 120);
-      splash(x, y + 20, 4 + L.f.tier * 3, 0.6 + L.f.tier * 0.3);
+    if (L.t >= 0.22) {
+      // 魚がポイから跳ねて、右上のコインへ飛んでいく
+      const x = poi.x + L.dx, y = poi.y + L.dy;
+      pops.push({ v: L.v, f: L.f, x, y, sx: x, sy: y, t: 0, vx: R(-120, 120) + (x - poi.x) * 1.5, vy: R(-520, -380), rot: L.f.ang, vr: R(-14, 14), seq: L.i });
+      splash(x, y, 6 + L.f.tier * 3, 0.9 + L.f.tier * 0.3);
       SFX.plop(L.i);
       lifted.splice(i, 1);
     }
   }
-  // 数字：浮いて、カウンターへ飛ぶ
+  // 飛んでいく魚：放物線で跳ねてから、コインの所へ吸い込まれる
   for (let i = pops.length - 1; i >= 0; i--) {
-    const p = pops[i]; p.t += sdt;
-    if (p.t < 0.45) { p.x += p.vx * sdt; p.y += p.vy * sdt; p.vy += 520 * sdt; p.vx *= 0.96; p.sx = p.x; p.sy = p.y; }
+    const p = pops[i]; p.t += sdt; p.rot += p.vr * sdt;
+    if (p.t < 0.32) { p.x += p.vx * sdt; p.y += p.vy * sdt; p.vy += 1300 * sdt; p.sx = p.x; p.sy = p.y; }
     else {
-      const u = clamp((p.t - 0.45) / 0.42, 0, 1), e = easeIn(u);
-      p.x = lerp(p.sx, COUNTER.x - 120, e) + Math.sin(u * Math.PI) * -60; p.y = lerp(p.sy, COUNTER.y, e);
+      const u = clamp((p.t - 0.32) / 0.38, 0, 1), e = easeIn(u);
+      p.x = lerp(p.sx, COUNTER.x - 130, e); p.y = lerp(p.sy, COUNTER.y, e) - Math.sin(u * Math.PI) * 60;
       if (u >= 1) {
         G.coins += p.v; G.earned += p.v; G.bump = 1;
         if (!EV.some(e => e.type === 'coin')) ev('coin', { v: p.v });
-        sparks(COUNTER.x - 110, COUNTER.y, 5, '#ffe14a', 200);
+        if (G.total) { G.total.shown += p.v; G.total.pending--; G.total.pulse = 1; }
+        sparks(COUNTER.x - 120, COUNTER.y, 8, '#ffe14a', 260);
         SFX.coin(p.seq);
         pops.splice(i, 1);
       }
     }
+  }
+  if (G.total) {
+    const T = G.total; T.t += dt; T.pulse = Math.max(0, (T.pulse || 0) - dt * 5);
+    T.y = clamp(T.y, 300, 1000);
+    if (T.pending <= 0) { T.shown = T.target; T.end += dt; if (T.end > 0.55) G.total = null; }
+    if (T.t > 2.5) G.total = null;
   }
   // パーティクル
   for (let i = parts.length - 1; i >= 0; i--) {
@@ -645,7 +683,7 @@ function botUpdate(dt) {
     }
     if (want >= 0 && S.t > 0.2) { S.st = 'shop'; S.shopI = want; S.t = 0; input.away = true; return; }
     // 欲張りの時間（一度だけ破らせて見せ場を作る）
-    if (!S.greedyDone && G.realT > 9 && G.realT < 14) S.greedy = true;
+    if (!S.greedyDone && G.realT > 6 && G.realT < 11) S.greedy = true;
     S.re -= dt;
     if (S.re <= 0 || !S.anchor) { S.anchor = botPick(); S.re = 0.25; }
     if (!S.anchor) { move(W / 2, 640, 900); return; }
@@ -805,8 +843,16 @@ function drawRing(c, x, y, r, alpha) {
 
 // ---------------------------------------------------------------- 描画：全体
 const PERF = Q.get('perf') || '';
+const OFF = mk(W, H), offCtx = OFF.getContext('2d');
+let overlayMax = 0; window.__overlayMax = () => overlayMax;
 function render() {
-  const c = ctx, t = G.simT;
+  const n = texts.length + (G.total ? 1 : 0) + (G.banner ? 1 : 0);
+  if (n > overlayMax) { overlayMax = n; ev('overlay', { n }); }
+  if (G.reveal) { renderScene(offCtx); drawReveal(ctx, G.reveal.t); }
+  else renderScene(ctx);
+}
+function renderScene(c) {
+  const t = G.simT;
   if (PERF === 'blank') { c.fillStyle = (G.realT * 10 | 0) % 2 ? '#111' : '#222'; c.fillRect(0, 0, W, H); return; }
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.fillStyle = '#05060d'; c.fillRect(0, 0, W, H);
@@ -856,7 +902,8 @@ function render() {
   // ポイ
   let px = poi.x, py = poi.y, pr = poi.r;
   if (poi.state === 'enter') { const u = easeOut(poi.enterT); px = lerp(W + 120, poi.x, u); py = lerp(H - 200, poi.y, u); }
-  if (poi.state === 'torn') {
+  if (G.reveal) { /* 引きの間は池の中身だけ（ポイは消す） */ }
+  else if (poi.state === 'torn') {
     const u = clamp(poi.tearT / 0.6, 0, 1);
     drawRing(c, px + u * 30, py + u * 50, pr * (1 - u * 0.1), 1 - u);
   } else if (dipped) {
@@ -866,15 +913,26 @@ function render() {
     drawRing(c, px, py, pr, 1);
   } else {
     const lift = 1 + 0.06 * (1 - poi.sink);
+    // すくった瞬間のしなり（つぶれて戻る、減衰する揺れ）
+    const k = poi.squash || 0, wob = Math.sin((1 - k) * 22) * k;
+    const sx = 1 + 0.16 * wob, sy = 1 - 0.22 * wob;
     // 影
-    c.fillStyle = 'rgba(0,30,60,0.25)'; c.beginPath(); c.arc(px + 16, py + 26, pr * lift, 0, 7); c.fill();
+    c.fillStyle = 'rgba(0,30,60,0.25)'; c.beginPath(); c.ellipse(px + 16, py + 26, pr * lift * sx, pr * lift * sy, 0, 0, 7); c.fill();
+    c.save(); c.translate(px, py); c.scale(sx, sy); c.translate(-px, -py);
     // 大きいポイは紙を薄くして、下の魚が見えるようにする
     drawPaper(c, px, py, pr * lift, pr > 120 ? lerp(0.85, 0.5, clamp((pr - 120) / 120, 0, 1)) : 1);
+    if (k > 0) { // 魚の重みで紙がたわむ
+      const g = c.createRadialGradient(px, py, 0, px, py, pr * 0.9);
+      g.addColorStop(0, `rgba(30,80,120,${0.35 * k})`); g.addColorStop(1, 'rgba(30,80,120,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(px, py, pr * 0.95, 0, 7); c.fill();
+    }
     drawRing(c, px, py, pr * lift, 1);
+    if (poi.glow > 0) { c.globalAlpha = poi.glow; c.lineWidth = 14; c.strokeStyle = '#fff6a0'; c.beginPath(); c.arc(px, py, pr * lift + 4, 0, 7); c.stroke(); c.globalAlpha = 1; }
+    c.restore();
   }
   // 持ち上げた魚（ポイの上でピチピチ）
   for (const L of lifted) {
-    const u = clamp(L.t / 0.34, 0, 1), jump = Math.sin(u * Math.PI) * 26;
+    const u = clamp(L.t / 0.22, 0, 1), jump = u * 30;
     const f = L.f; f.phase += 0.9;
     const sc = 1 + 0.35 * u;
     c.fillStyle = 'rgba(0,35,75,0.25)'; drawFishShadow(c, f, poi.x + L.dx, poi.y + L.dy, f.ang, sc * 0.9);
@@ -907,16 +965,28 @@ function render() {
     c.restore();
   }
   c.globalAlpha = 1;
-  // 数字
+  // 飛んでいく魚（数字ではなく魚そのものがコインへ）
   for (const p of pops) {
-    const pop = p.t < 0.15 ? elastic(p.t / 0.15) : 1, fly = p.t > 0.45 ? 1 - 0.5 * clamp((p.t - 0.45) / 0.42, 0, 1) : 1;
-    const size = (44 + Math.min(44, Math.log10(p.v + 1) * 14)) * pop * fly * (p.k || 1);
-    const fill = p.big >= 2 ? '#ffe14a' : p.big === 1 ? '#fff3b0' : '#ffffff';
-    text(c, '+' + fmt(p.v), p.x, p.y, size, fill, p.big >= 2 ? '#b0300a' : '#d2501a', Math.max(4, size * 0.18));
+    const u = p.t < 0.32 ? 0 : clamp((p.t - 0.32) / 0.38, 0, 1);
+    const sc = (1.35 - 1.0 * u) * (p.f.tier >= 3 ? 0.8 : 1);
+    p.f.phase += 0.7;
+    drawFishBody(c, p.f, p.x, p.y, p.rot, sc, 1);
+  }
+  // すくいの合計：1 回に 1 つだけ。着くたびに数え上がって弾む
+  if (G.total) {
+    const T = G.total, pop = elastic(Math.min(1, T.t * 4)), fade = T.end > 0.35 ? 1 - (T.end - 0.35) / 0.2 : 1;
+    const v = T.target, size = (84 + Math.min(56, Math.log10(T.target + 1) * 14)) * pop * (1 + 0.18 * (T.pulse || 0));
+    c.save(); c.globalAlpha = clamp(fade, 0, 1);
+    // 画面の端で切れないよう、幅を測って内側に寄せる
+    const s = '+' + fmt(v); c.font = '900 ' + size + 'px ' + FONT;
+    const hw = c.measureText(s).width / 2 + size * 0.12, x = clamp(T.x, 24 + hw, W - 24 - hw);
+    text(c, s, x, T.y, size, '#ffe14a', '#6a1a00', size * 0.17);
+    c.restore();
   }
 
   // ---- HUD（揺れなし）
   c.setTransform(1, 0, 0, 1, 0, 0);
+  if (G.reveal) return;
   drawHUD(c);
   drawShop(c);
   if (BOT || Q.get('hand') === '1') drawHand(c);
@@ -1036,15 +1106,22 @@ function drawShop(c) {
       c.strokeStyle = can ? '#7a2a00' : '#ffd23a'; c.lineWidth = 4;
       for (const a of [0.3, 2.3, 4.0]) { const cx = Math.cos(a), sy = Math.sin(a); c.beginPath(); c.moveTo(ix + cx * 30, iy + sy * 30); c.lineTo(ix + cx * 44, iy + sy * 44); c.stroke(); }
     } else {
-      const nt = Math.min(3, G.tier + 1);
-      const ff = { tier: nt, r: 1, phase: G.realT * 6, var: 0, patches: nt === 2 ? [[-0.2, 0, 0.25], [0.4, 0.05, 0.18]] : nt === 3 ? [[0, 0.1, 0.04]] : [] };
-      const scale = nt === 3 ? 40 : nt === 2 ? 46 : 40;
-      ff.r = scale;
-      if (!maxed) drawFishBody(c, ff, ix + 4, iy, -0.15, 1, 1);
+      if (G.tier >= 3 && !maxed) {
+        // 次は「？？？」：黒い影の玉
+        c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.arc(ix + 2, iy + 3, 30, 0, 7); c.fill();
+        c.fillStyle = '#10142a'; c.beginPath(); c.arc(ix, iy, 30, 0, 7); c.fill();
+        c.lineWidth = 3; c.strokeStyle = '#7fc4ff'; c.stroke();
+        text(c, '?', ix, iy + 2, 40, '#ffffff', null, 0);
+      } else {
+        const nt = Math.min(3, G.tier + 1);
+        const ff = { tier: nt, r: 1, phase: G.realT * 6, var: 0, patches: nt === 2 ? [[-0.2, 0, 0.25], [0.4, 0.05, 0.18]] : nt === 3 ? [[0, 0.1, 0.04]] : [] };
+        ff.r = nt === 2 ? 46 : 40;
+        if (!maxed) drawFishBody(c, ff, ix + 4, iy, -0.15, 1, 1);
+      }
     }
     const tc = can && !maxed ? '#3a1404' : '#ffffff';
     text(c, SHOP[i].name, 0, y + 104, 26, tc, null, 0);
-    let sub = maxed ? '最大' : i === 0 ? 'Lv ' + (G.lv.dur + 1) : i === 1 ? 'Lv ' + (G.lv.size + 1) : '→ ' + TIERS[G.tier + 1].name;
+    let sub = maxed ? '最大' : i === 0 ? 'Lv ' + (G.lv.dur + 1) : i === 1 ? 'Lv ' + (G.lv.size + 1) : G.tier >= 3 ? '→ ？？？' : '→ ' + TIERS[G.tier + 1].name;
     text(c, sub, 0, y + 132, 20, can && !maxed ? '#7a3a10' : '#a8b4e0', null, 0, 'center', '700');
     if (!maxed) {
       const ps2 = fmt(p); c.font = '900 30px ' + FONT; const w = c.measureText(ps2).width;
@@ -1059,17 +1136,77 @@ function drawShop(c) {
 function drawBanner(c, b) {
   const t = b.t, u = t / b.life;
   const inT = elastic(Math.min(1, t * 3)), out = u > 0.82 ? (1 - u) / 0.18 : 1;
+  const R0 = BANNER_RECT;
   c.save(); c.globalAlpha = out;
-  // 放射状の光
-  c.translate(W / 2, 560);
-  c.save(); c.rotate(t * 0.8); c.fillStyle = 'rgba(255,230,120,0.18)';
-  for (let i = 0; i < 14; i++) { c.rotate(Math.PI * 2 / 14); c.beginPath(); c.moveTo(0, 0); c.lineTo(-60, -700); c.lineTo(60, -700); c.closePath(); c.fill(); }
-  c.restore();
-  c.scale(inT, inT); c.rotate(-0.05);
-  c.fillStyle = '#d6261f'; rr(c, -330, -70, 660, 140, 30); c.fill();
-  c.lineWidth = 8; c.strokeStyle = '#ffe14a'; c.stroke();
-  text(c, b.s, 0, -4, b.s.length > 7 ? 64 : 76, '#ffffff', '#5a0a04', 12);
+  // 池の外（上の帯）だけに出す。光の筋は出さない
+  c.translate(R0.x + R0.w / 2, R0.y + R0.h / 2);
+  c.scale(inT, inT);
+  c.fillStyle = '#d6261f'; rr(c, -R0.w / 2, -R0.h / 2, R0.w, R0.h, 26); c.fill();
+  c.lineWidth = 7; c.strokeStyle = '#ffe14a'; c.stroke();
+  text(c, b.s, 0, -2, b.s.length > 7 ? 58 : 66, '#ffffff', '#5a0a04', 10);
   c.restore(); c.globalAlpha = 1;
+}
+
+// ---------------------------------------------------------------- 引きの演出（文字なし）：池 → 星 → 金魚の形をした星たち → 巨大なポイ
+const STARS = []; (function () { const r = mulberry32(11); for (let i = 0; i < 240; i++) STARS.push([r() * W, r() * H, 0.6 + r() * 1.8, r() * 6]); })();
+const SPACE_FISH = []; (function () { const r = mulberry32(23); const pos = [[120, 250], [610, 330], [90, 900], [560, 1010], [330, 1130]]; pos.forEach((p, i) => SPACE_FISH.push({ tier: 0, var: i % 4, r: 30 + r() * 16, phase: r() * 6, patches: [], x: p[0], y: p[1], ang: r() * 6.28, sp: 10 + r() * 14 })); })();
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function drawReveal(c, t) {
+  const PX = W / 2, PY = WATER.y + WATER.h / 2, CX = W / 2, CY = 600;
+  const zt = easeInOut(clamp((t - 0.35) / 2.1, 0, 1));
+  const z = Math.exp(lerp(0, Math.log(0.5), zt));            // 1 → 0.5（星は半径 約 160px）
+  const m = clamp((t - 0.5) / 1.8, 0, 1);                     // 四角い池 → 丸い星
+  const space = clamp((t - 0.4) / 1.2, 0, 1);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  // 宇宙
+  c.fillStyle = '#03040b'; c.fillRect(0, 0, W, H);
+  c.globalAlpha = space;
+  for (const s of STARS) { c.fillStyle = '#ffffff'; c.globalAlpha = space * (0.4 + 0.6 * Math.abs(Math.sin(t * 2 + s[3]))); c.fillRect(s[0], s[1], s[2], s[2]); }
+  c.globalAlpha = 1;
+  // 金魚の形をした星たち（ゆっくり泳ぐ）
+  const fa = clamp((t - 1.6) / 1.0, 0, 1);
+  if (fa > 0) {
+    for (const f of SPACE_FISH) {
+      f.phase = t * 3 + f.r;
+      const x = f.x + Math.cos(f.ang) * f.sp * t, y = f.y + Math.sin(f.ang) * f.sp * t;
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 * fa;
+      const s = bokehSprite('rgba(255,140,60,A)'); c.drawImage(s, x - f.r * 1.6, y - f.r * 1.6, f.r * 3.2, f.r * 3.2);
+      c.globalCompositeOperation = 'source-over';
+      drawFishBody(c, f, x, y, f.ang, 1, fa);
+      // 胴は星の玉（影と光）
+      const g = c.createRadialGradient(x - f.r * 0.2, y - f.r * 0.2, 1, x, y, f.r * 0.42);
+      g.addColorStop(0, 'rgba(255,230,180,0.0)'); g.addColorStop(0.7, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,20,0.55)');
+      c.globalAlpha = fa; c.fillStyle = g; c.beginPath(); c.arc(x + f.r * 0.06 * Math.cos(f.ang), y + f.r * 0.06 * Math.sin(f.ang), f.r * 0.42, 0, 7); c.fill(); c.globalAlpha = 1;
+    }
+  }
+  // 池（だんだん丸く切り抜かれて、星になる）
+  const rc = lerp(Math.hypot(W, H), WATER.w / 2 - 6, easeInOut(m)) * z;
+  c.save(); c.beginPath(); c.arc(CX, CY, rc, 0, 7); c.clip();
+  c.translate(CX, CY); c.scale(z, z); c.translate(-PX, -PY); c.drawImage(OFF, 0, 0);
+  c.restore();
+  // 星の陰影と大気
+  const sh = clamp((t - 1.4) / 1.0, 0, 1);
+  if (sh > 0) {
+    const g = c.createRadialGradient(CX - rc * 0.35, CY - rc * 0.35, rc * 0.1, CX, CY, rc);
+    g.addColorStop(0, 'rgba(255,255,255,0.12)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,15,0.75)');
+    c.globalAlpha = sh; c.fillStyle = g; c.beginPath(); c.arc(CX, CY, rc, 0, 7); c.fill();
+    c.globalCompositeOperation = 'lighter';
+    const a = c.createRadialGradient(CX, CY, rc * 0.92, CX, CY, rc * 1.25);
+    a.addColorStop(0, 'rgba(90,200,255,0.55)'); a.addColorStop(1, 'rgba(90,200,255,0)');
+    c.fillStyle = a; c.beginPath(); c.arc(CX, CY, rc * 1.25, 0, 7); c.fill();
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  }
+  // 巨大なポイの縁が、右下からゆっくり入ってくる（次はこれで掬う）
+  const pa = clamp((t - 2.3) / 1.2, 0, 1);
+  if (pa > 0) {
+    const e = easeOut(pa), R2 = 700, d = R2 + rc + lerp(520, 70, e), a = 0.9;
+    const rx = CX + Math.cos(a) * d, ry = CY + Math.sin(a) * d;
+    c.fillStyle = 'rgba(235,240,245,0.16)'; c.beginPath(); c.arc(rx, ry, R2 * 0.95, 0, 7); c.fill();
+    drawRing(c, rx, ry, R2, 1);
+  }
+  if (G.flash > 0) { c.fillStyle = `rgba(255,255,255,${G.flash})`; c.fillRect(0, 0, W, H); }
+  // 人が遊んでいるときだけ、最後に小さく案内
+  if (!BOT && t > REVEAL_LEN) text(c, 'タップでもどる', W / 2, H - 70, 30, 'rgba(255,255,255,0.7)', null, 0, 'center', '700');
 }
 
 // ---------------------------------------------------------------- ループ

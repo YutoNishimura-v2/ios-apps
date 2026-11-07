@@ -144,7 +144,8 @@ def cmd_manual(a):
             to_page = lambda x, y: (box[0] + x * box[2] / 720, box[1] + y * box[3] / 1280)
             dips = 0
             for k in range(12):
-                fx, fy = page.evaluate("() => window.__fishPos()")[k * 3 % 50]
+                pos = page.evaluate("() => window.__fishPos()")
+                fx, fy = pos[k * 3 % len(pos)]
                 px, py = to_page(fx, fy)
                 if mode == "mouse":
                     page.mouse.move(px, py)
@@ -198,7 +199,11 @@ def cmd_record(a):
             if i % 150 == 0:
                 print("frame", i, flush=True)
         evs = page.evaluate("() => window.__events")
+        ov = page.evaluate("() => window.__overlayMax ? window.__overlayMax() : null")
         browser.close()
+    (REC / f"overlay_{int(a.start)}.json").write_text(json.dumps({"start": a.start, "seconds": a.seconds, "overlay_max": ov,
+        "overlay_events": [e for e in evs if e["type"] == "overlay" and e["t"] >= a.start]}, ensure_ascii=False), encoding="utf-8")
+    print("overlay max", ov)
     if a.start == 0:
         (REC / "events.json").write_text(json.dumps(evs, ensure_ascii=False, indent=0), encoding="utf-8")
         summarize(evs)
@@ -260,8 +265,12 @@ def cmd_trailer(a):
             img = load_frame(i)
             if cap and k < int(2.2 * FPS):
                 caption(img, cap)
-            writer.send(np.asarray(img).tobytes())
-            k += 1
+            if k < 450:
+                writer.send(np.asarray(img).tobytes())
+                k += 1
+    while k < 450:  # 区間の端数で 1〜2 コマ足りないときは最後のコマを延ばす
+        writer.send(np.asarray(img).tobytes())
+        k += 1
     writer.close()
     print("trailer frames", k, "=", k / FPS, "s")
 
@@ -279,6 +288,19 @@ def auto_segments(evs, nframes):
     t1 = first(lambda e: e["type"] == "tier" and e["tier"] == 1)
     t2 = first(lambda e: e["type"] == "tier" and e["tier"] == 2)
     t3 = first(lambda e: e["type"] == "tier" and e["tier"] == 3)
+    rv = first(lambda e: e["type"] == "reveal")
+    if rv:
+        # 第5回：最後は「池が星に見える」引きで締める（ボタンを押す 0.4 秒前から）
+        segs = [(big["t"] - 0.25, big["t"] + 1.5)]       # 掴み：まとめてすくう（数字は 1 つ）
+        segs.append((tear - 0.6, tear + 1.0))             # 破れ
+        segs.append((t1 - 0.7, t1 + 1.8))                 # 強化ボタン → 出目金
+        segs.append((t2 - 0.3, t2 + 1.6))                 # 鯉
+        tail = (rv - 0.4, rv + 3.9)
+        used = sum(e - s for s, e in segs) + (tail[1] - tail[0])
+        whale = max((e for e in evs if e["type"] == "scoop" and t3 + 1 < e["t"] < rv - 4), key=lambda e: e["n"])
+        segs.append((whale["t"] - 0.3, whale["t"] - 0.3 + 15 - used))  # 鯨をまとめてすくう
+        segs.append(tail)
+        return segs
     segs = [(big["t"] - 0.25, big["t"] + 1.5)]       # 掴み：まとめてすくう
     segs.append((tear - 0.6, tear + 1.1))             # 破れ
     segs.append((t1 - 0.7, t1 + 2.1))                 # 強化ボタンを押す → 出目金・ポイが大きく
@@ -353,9 +375,14 @@ def main():
     ap.add_argument("--args", default="--disable-gpu", help="Chromium launch args, comma separated")
     ap.add_argument("--extra", default="", help="extra query string for fps mode")
     ap.add_argument("--channel", default="", help='"chromium" = new headless mode')
+    ap.add_argument("--frames", default="", help="frames folder name under rec/ (default: frames)")
+    ap.add_argument("--events", default="events.json")
     a = ap.parse_args()
     LAUNCH_ARGS[:] = [x for x in a.args.split(",") if x]
     CHANNEL[0] = a.channel
+    if a.frames:
+        global FRAMES
+        FRAMES = REC / a.frames
     {"sim": cmd_sim, "fps": cmd_fps, "bench": cmd_bench, "manual": cmd_manual, "record": cmd_record, "encode": cmd_encode, "trailer": cmd_trailer,
      "sheet": cmd_sheet, "compare": cmd_compare}[a.cmd](a)
 

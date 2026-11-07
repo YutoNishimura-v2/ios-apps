@@ -1,19 +1,19 @@
 {
  "mouse": {
-  "dips_detected": 12,
+  "dips_detected": 11,
   "tries": 12,
-  "coins_after_scoops": 147,
-  "earned": 147,
-  "scoops": 10,
+  "coins_after_scoops": 245,
+  "earned": 245,
+  "scoops": 11,
   "dur_lv_before": 0,
   "dur_lv_after_tap": 1,
   "console_errors": 0
  },
  "touch": {
-  "dips_detected": 9,
+  "dips_detected": 10,
   "tries": 12,
-  "coins_after_scoops": 50,
-  "earned": 50,
+  "coins_after_scoops": 252,
+  "earned": 252,
   "scoops": 9,
   "dur_lv_before": 0,
   "dur_lv_after_tap": 1,
