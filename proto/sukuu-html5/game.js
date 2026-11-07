@@ -649,12 +649,12 @@ const omake = () => clamp(1 - (G.wt - (OMAKE_T - 20 * perkN('fuku'))) * 0.025, 0
 const UPF = [[1, 1.3, 1.3], [1.1, 0.7, 1.25], [1.25, 1.1, 0.6], [1, 1.3, 0.8], [1.2, 0.75, 1.2]];
 const upf = i => UPF[G.k][(i + G.ng) % 3];
 // はじめての買い物は半額（一晩目の池だけ）
-// 一晩目の池の買い物：1 回目はどれでも 9、2 回目はどれでも 20、3 回目 6 割、4 回目 8 割
+// 一晩目の池の買い物：1 回目はどれでも 9、2 回目はまだ買っていない強化（Lv0）なら 20
 // （批評 r10：でたらめに押す初心者の 1 回目→2 回目が 34〜36 秒空いた）
-const FIRST_FIXED = [9, 20], FIRST_OFF = [1, 1, 0.6, 0.8];
+const FIRST_FIXED = [9, 20];
 const pondBuys = () => (G.firstBuy ? Math.max(1, G.pondBuys || 0) : 0);
-const firstOff = () => (G.ng === 0 && G.k === 0 && pondBuys() < FIRST_OFF.length ? FIRST_OFF[pondBuys()] : 1);
-function price(i) { const U = UPG[i], lv = lvOf(i); if (G.ng === 0 && G.k === 0 && pondBuys() < FIRST_FIXED.length) return FIRST_FIXED[pondBuys()]; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
+const firstOff = () => 1;
+function price(i) { const U = UPG[i], lv = lvOf(i); if (G.ng === 0 && G.k === 0 && pondBuys() < FIRST_FIXED.length && (pondBuys() === 0 || lv === 0)) return FIRST_FIXED[pondBuys()]; return lv >= U.max ? Infinity : Math.round(U.base * Math.pow(U.g, lv) * WD().vs * WORLD_PRICE[G.k] * upf(i) * omake() * firstOff() * ngPrice()); }
 // 次の厚さで新しく持てるようになる獲物（ボタンに出す）
 function nextUnlock() {
   const c0 = cap(), c1 = capOf(G.lv.t + 1);
