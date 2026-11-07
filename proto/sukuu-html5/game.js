@@ -202,7 +202,7 @@ for (const [k, ext, world] of ART) {
   im.src = 'assets/' + k + '.' + ext;
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
-for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale']) {
+for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body']) {
   const im = new Image();
   im.onload = () => { IMG[k] = im; };
   im.src = 'assets/' + k + '.png';
@@ -773,7 +773,7 @@ const CLEAR_LEN = 1.5, TRANS_LEN = 3.6, EARTH_LEN = 6.6, ENDING_LEN = 9;
 // 宇宙の主（キンちゃん）を捕ったときだけ、大写しを見せるため長めに
 const KIN_CLOSE_LEN = 2.4;
 const clearLen = () => (G.k === WORLDS.length - 1 ? KIN_CLOSE_LEN : CLEAR_LEN);
-const KIN_CLOSE = { K: { draw: 'kin', r: 150 }, r: 150, var: 0, phase: 0, patches: [], isKin: true, id: 0 };
+const KIN_CLOSE = { K: { draw: 'kin', r: 150 }, r: 150, var: 0, phase: 0, patches: [], isKin: true, id: 0, noGlow: true };
 // 批評 r11：最後の主の魚が画面幅の 10% だった。捕った瞬間に水槽の真ん中へ大きく（幅の約 4 割）映す
 function drawKinClose(c, t) {
   const u = clamp((t - 0.12) / 0.3, 0, 1) * clamp((KIN_CLOSE_LEN - t) / 0.35, 0, 1);
@@ -781,8 +781,9 @@ function drawKinClose(c, t) {
   const cx = W / 2, cy = (TUB.y + SHOP_Y) / 2, s = 0.75 + 0.25 * easeOut(clamp((t - 0.12) / 0.5, 0, 1));
   c.save();
   c.fillStyle = `rgba(10,0,30,${0.5 * u})`; c.fillRect(0, TUB.y - 8, W, SHOP_Y - TUB.y + 8);
-  c.globalAlpha = u; c.globalCompositeOperation = 'lighter';
-  c.drawImage(bokehSprite('rgba(255,200,80,A)'), cx - 300 * s, cy - 300 * s, 600 * s, 600 * s);
+  c.globalAlpha = u * 0.5; c.globalCompositeOperation = 'lighter';
+  c.drawImage(bokehSprite('rgba(255,190,70,A)'), cx - 300 * s, cy - 300 * s, 600 * s, 600 * s);
+  c.globalAlpha = u;
   c.globalCompositeOperation = 'source-over';
   KIN_CLOSE.phase = G.realT * 5;
   drawCreature(c, KIN_CLOSE, cx, cy, -0.25 + Math.sin(G.realT * 2) * 0.06, s, u);
@@ -1415,10 +1416,20 @@ function finTail(c, r, sw, sw2, tcol, tl) {
 function drawGoldfish(c, f, r, sw, sw2, kind) {
   const deme = kind === 'demekin', kin = kind === 'kin', black = deme && f.var < 2;
   const col = kin ? '#ffb21a' : deme ? (black ? '#1c1c2a' : '#ff3a1e') : KINGYO_COLS[f.var % 4][0];
-  const tcol = kin ? 'rgba(255,220,120,0.8)' : deme ? (black ? 'rgba(60,60,110,0.75)' : 'rgba(255,120,90,0.75)') : KINGYO_COLS[f.var % 4][1];
-  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : 1.0);
+  const tcol = kin ? 'rgba(255,175,50,0.82)' : deme ? (black ? 'rgba(60,60,110,0.75)' : 'rgba(255,120,90,0.75)') : KINGYO_COLS[f.var % 4][1];
+  finTail(c, r, sw, sw2, tcol, deme ? 1.15 : kin && IMG.kin_body ? 0.85 : 1.0);
   c.fillStyle = tcol;
   for (const s of [-1, 1]) { c.save(); c.translate(0.22 * r, s * 0.3 * r); c.rotate(s * (0.9 + sw * 0.35)); c.beginPath(); c.ellipse(-0.1 * r, 0, 0.2 * r, 0.08 * r, 0, 0, TAU); c.fill(); c.restore(); }
+  if (kin && IMG.kin_body) {
+    // 批評 r11：キンちゃんの体が「丸に点 2 つ」に見えた。体は gpt-image の絵（尾・ひれはコードで動かす）。
+    // 白い模様（地球の大陸と同じ並び）は絵の上に重ねる
+    c.drawImage(IMG.kin_body, -0.72 * r, -0.58 * r, 1.73 * r, 1.155 * r);
+    c.save(); c.beginPath(); c.ellipse(0.06 * r, 0, 0.72 * r, 0.4 * r, 0, 0, TAU); c.clip();
+    c.globalAlpha *= 0.5; c.fillStyle = 'rgba(255,250,225,1)';
+    for (const p of KIN_PATCH) { c.beginPath(); c.ellipse(p[0] * r * 1.6, p[1] * r * 1.2, p[2] * r * 1.5, p[2] * r * 1.1, 0.4, 0, TAU); c.fill(); }
+    c.restore();
+    return;
+  }
   c.fillStyle = col; c.beginPath(); c.ellipse(0.06 * r, 0, 0.58 * r, deme ? 0.4 * r : 0.35 * r, 0, 0, TAU); c.fill();
   c.beginPath(); c.moveTo(-0.3 * r, -0.2 * r); c.quadraticCurveTo(-0.55 * r, 0, -0.3 * r, 0.2 * r); c.fill();
   // 白い模様（var 3 と キンちゃん）＝ 地球の大陸と同じ並び
@@ -1620,7 +1631,7 @@ function drawCreature(c, f, x, y, ang, sc, alpha) {
       // 批評 r11：魚が画面幅の 10% しかなかった。輪いっぱいに描く（画面幅の 25% 以上）
       drawGoldfish(c, f, r * 0.68, sw, sw2, 'kin');
     } else {
-      c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -r * 1.4, -r * 1.4, r * 2.8, r * 2.8); c.globalCompositeOperation = 'source-over';
+      if (!f.noGlow) { c.globalCompositeOperation = 'lighter'; c.drawImage(bokehSprite('rgba(255,200,80,A)'), -r * 1.4, -r * 1.4, r * 2.8, r * 2.8); c.globalCompositeOperation = 'source-over'; }
       drawGoldfish(c, f, r, sw, sw2, 'kin');
     }
   }
