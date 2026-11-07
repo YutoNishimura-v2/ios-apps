@@ -819,7 +819,9 @@ function lift() {
   // 守りが弱まる間は、少しの重すぎ（持てる重さの 1+1.5×ease 倍まで）なら破れずにこぼれる。
   // 1 匹だけで持てない魚（池の鯉など）も、守りの間はこぼれるだけ（「紙の厚さ」が要ると教える）
   const oneTooHeavy = caught.length === 1 && wOf(caught[0]) > capEff();
-  const soft = ease() > 0 && (oneTooHeavy || wsum <= capEff() * (1 + 1.5 * ease()));
+  // 批評 r11：厚さを買わずに進んだ初心者が、池で重さの破れを 13 回（10 匹以上が 5 回）。一晩目の池は守りの間ずっとこぼれるだけ
+  const firstPondSoft = G.ng === 0 && G.k === 0;
+  const soft = ease() > 0 && (oneTooHeavy || firstPondSoft || wsum <= capEff() * (1 + 1.5 * ease()));
   // 群れ（6 匹以上）で少しの重すぎ（SPILL_MAX 倍まで）は、破れずに外側からあふれる（批評 r10：一度に 19〜20 匹失う）
   const school = !hasBoss && caught.length >= 6 && wsum <= capEff() * SPILL_MAX;
   if (wsum > capEff() && (grace() || school || (!hasBoss && (beginner() || soft)))) {
