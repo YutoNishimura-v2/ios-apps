@@ -171,6 +171,11 @@ function frame(g, dark, mid, light) {
   const gr = g.createLinearGradient(0, T.y - 6, 0, T.y + T.h + 6);
   gr.addColorStop(0, light); gr.addColorStop(0.08, mid); gr.addColorStop(1, dark);
   rr(g, T.x - 6, T.y - 6, T.w + 12, T.h + 12, T.r + 6); g.fillStyle = gr; g.fill();
+  // 樹脂のたらいのつや：縁の上側に白い光の筋、水との境に影
+  const hl = g.createLinearGradient(0, T.y - 6, 0, T.y + T.h);
+  hl.addColorStop(0, 'rgba(255,255,255,0.9)'); hl.addColorStop(0.35, 'rgba(255,255,255,0.25)'); hl.addColorStop(1, 'rgba(255,255,255,0.05)');
+  g.lineWidth = 5; g.strokeStyle = hl; rr(g, T.x + 1, T.y + 1, T.w - 2, T.h - 2, T.r - 1); g.stroke();
+  g.lineWidth = 6; g.strokeStyle = 'rgba(0,10,40,0.45)'; rr(g, WATER.x - 3, WATER.y - 3, WATER.w + 6, WATER.h + 6, WATER.r + 3); g.stroke();
 }
 function frameEnd(g, hl, inner) {
   const T = TUB, ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
@@ -190,10 +195,19 @@ function starDots(g, n, seed, x0, y0, w, h, amax) {
 
 // gpt-image で作った絵（assets/）。読めたら池の背景を作り直す。読めないときは今までのコードの絵のまま
 const IMG = {};
-for (const k of ['pond_backdrop', 'pond_water']) {
+const ART = [['pond_backdrop', 'png', 0], ['pond_water', 'png', 0], ['sea_water', 'jpg', 1], ['land_water', 'jpg', 2], ['sky_space', 'jpg', 3], ['cosmos', 'jpg', 4]];
+for (const [k, ext, world] of ART) {
   const im = new Image();
-  im.onload = () => { IMG[k] = im; BGS[0] = null; };
-  im.src = 'assets/' + k + '.png';
+  im.onload = () => { IMG[k] = im; BGS[world] = null; };
+  im.src = 'assets/' + k + '.' + ext;
+}
+// 段の水（空）を絵で塗る。絵が読めていなければ false を返し、呼び側はコードの絵を描く
+function artWater(g, key, shade) {
+  const im = IMG[key];
+  if (!im) return false;
+  drawCover(g, im, WATER.x, WATER.y, WATER.w, WATER.h);
+  if (shade) { g.fillStyle = shade; g.fillRect(WATER.x, WATER.y, WATER.w, WATER.h); }
+  return true;
 }
 function drawCover(g, im, x, y, w, h, ax, ay) {
   const s = Math.max(w / im.width, h / im.height), dw = im.width * s, dh = im.height * s;
@@ -270,6 +284,11 @@ function buildSeaBG() {
   g.fillStyle = '#f2f6ff'; g.beginPath(); g.arc(610, 60, 26, 0, TAU); g.fill();
   frame(g, '#0a2a4c', '#155a8c', '#6fb6e0');
   waterClip(g);
+  if (!artWater(g, 'sea_water', 'rgba(0,20,50,0.12)')) drawSeaWaterCode(g);
+  frameEnd(g, 'rgba(160,220,255,0.6)', 'rgba(2,15,40,0.4)');
+  return c;
+}
+function drawSeaWaterCode(g) {
   const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
   let gr = g.createLinearGradient(0, iy, 0, iy + ih);
   gr.addColorStop(0, '#1d93c6'); gr.addColorStop(0.45, '#0d5f97'); gr.addColorStop(1, '#042349');
@@ -287,8 +306,6 @@ function buildSeaBG() {
   for (const [x, y, rx, ry] of [[ix + 40, iy + ih - 20, 120, 60], [ix + iw - 50, iy + ih - 10, 150, 80], [ix + iw * 0.45, iy + ih + 10, 90, 40]]) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); g.fill(); }
   g.strokeStyle = 'rgba(20,90,70,0.35)'; g.lineWidth = 7; g.lineCap = 'round';
   for (let k = 0; k < 7; k++) { const x = ix + 70 + k * 85 + (k % 2) * 20; g.beginPath(); g.moveTo(x, iy + ih); for (let y = 0; y < 150 + (k % 3) * 50; y += 12) g.lineTo(x + Math.sin(y * 0.05 + k) * 12, iy + ih - y); g.stroke(); }
-  frameEnd(g, 'rgba(160,220,255,0.6)', 'rgba(2,15,40,0.4)');
-  return c;
 }
 function buildSkyBG() {
   const c = mk(W, H), g = c.getContext('2d');
@@ -297,20 +314,8 @@ function buildSkyBG() {
   frame(g, '#1a1a4a', '#2c2c78', '#8f9fff');
   waterClip(g);
   const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
-  let gr = g.createLinearGradient(0, iy, 0, iy + ih);
-  gr.addColorStop(0, '#1c1f5e'); gr.addColorStop(0.5, '#121442'); gr.addColorStop(1, '#0a0b26');
-  g.fillStyle = gr; g.fillRect(ix, iy, iw, ih);
-  // 天の川（斜めの帯）
-  const r = mulberry32(41);
-  for (let i = 0; i < 26; i++) {
-    const u = r(), x = ix + u * iw, y = iy + ih * (0.85 - u * 0.7) + (r() - 0.5) * 120, sz = 80 + r() * 140;
-    g.globalAlpha = 0.12 + r() * 0.1; g.drawImage(bokehSprite(i % 3 ? 'rgba(150,140,255,A)' : 'rgba(255,170,220,A)'), x - sz / 2, y - sz / 2, sz, sz);
-  }
-  g.globalAlpha = 1;
-  for (let i = 0; i < 700; i++) {
-    const u = r(), x = ix + u * iw, y = iy + ih * (0.85 - u * 0.7) + (r() - 0.5) * (r() < 0.7 ? 140 : 600), s = 0.6 + r() * 1.6;
-    g.fillStyle = `rgba(255,255,255,${0.25 + r() * 0.6})`; g.fillRect(x, y, s, s);
-  }
+  let gr;
+  if (!artWater(g, 'sky_space', 'rgba(5,5,30,0.15)')) drawSkyCode(g);
   // 足もとに地球の縁（さっきまでの海）
   const ex = W / 2, ey = iy + ih + 1150, er = 1240;
   g.save(); g.beginPath(); g.arc(ex, ey, er, 0, TAU); g.clip();
@@ -325,12 +330,34 @@ function buildSkyBG() {
   frameEnd(g, 'rgba(170,180,255,0.6)', 'rgba(5,5,30,0.45)');
   return c;
 }
+function drawSkyCode(g) {
+  const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
+  const gr = g.createLinearGradient(0, iy, 0, iy + ih);
+  gr.addColorStop(0, '#1c1f5e'); gr.addColorStop(0.5, '#121442'); gr.addColorStop(1, '#0a0b26');
+  g.fillStyle = gr; g.fillRect(ix, iy, iw, ih);
+  // 天の川（斜めの帯）
+  const r = mulberry32(41);
+  for (let i = 0; i < 26; i++) {
+    const u = r(), x = ix + u * iw, y = iy + ih * (0.85 - u * 0.7) + (r() - 0.5) * 120, sz = 80 + r() * 140;
+    g.globalAlpha = 0.12 + r() * 0.1; g.drawImage(bokehSprite(i % 3 ? 'rgba(150,140,255,A)' : 'rgba(255,170,220,A)'), x - sz / 2, y - sz / 2, sz, sz);
+  }
+  g.globalAlpha = 1;
+  for (let i = 0; i < 700; i++) {
+    const u = r(), x = ix + u * iw, y = iy + ih * (0.85 - u * 0.7) + (r() - 0.5) * (r() < 0.7 ? 140 : 600), s = 0.6 + r() * 1.6;
+    g.fillStyle = `rgba(255,255,255,${0.25 + r() * 0.6})`; g.fillRect(x, y, s, s);
+  }
+}
 function buildCosmosBG() {
   const c = mk(W, H), g = c.getContext('2d');
   nightTop(g, '#030208', '#07051a', '#020106');
   starDots(g, 100, 51, 0, 0, W, 175, 0.5);
   frame(g, '#1c0f3a', '#3a1f6e', '#c9a8ff');
   waterClip(g);
+  if (!artWater(g, 'cosmos', 'rgba(5,2,20,0.18)')) drawCosmosCode(g);
+  frameEnd(g, 'rgba(210,180,255,0.6)', 'rgba(5,2,20,0.5)');
+  return c;
+}
+function drawCosmosCode(g) {
   const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
   let gr = g.createRadialGradient(W / 2, iy + ih * 0.44, 40, W / 2, iy + ih * 0.5, ih * 0.7);
   gr.addColorStop(0, '#1a0f3a'); gr.addColorStop(0.6, '#0b0720'); gr.addColorStop(1, '#030210');
@@ -342,8 +369,6 @@ function buildCosmosBG() {
   // 遠くの小さな銀河
   for (let i = 0; i < 10; i++) { const x = ix + r() * iw, y = iy + r() * ih; g.save(); g.translate(x, y); g.rotate(r() * 3); g.globalAlpha = 0.35; g.drawImage(bokehSprite('rgba(230,220,255,A)'), -14, -5, 28, 10); g.restore(); }
   g.globalAlpha = 1;
-  frameEnd(g, 'rgba(210,180,255,0.6)', 'rgba(5,2,20,0.5)');
-  return c;
 }
 const BGS = [];
 function bgOf(k) { if (!BGS[k]) BGS[k] = [buildPondBG, buildSeaBG, buildLandBG, buildSkyBG, buildCosmosBG][k](); return BGS[k]; }
@@ -354,6 +379,11 @@ function buildLandBG() {
   starDots(g, 60, 91, 0, 0, W, 175, 0.4);
   frame(g, '#10304a', '#1f5f80', '#9fd8f0');
   waterClip(g);
+  if (!artWater(g, 'land_water', 'rgba(0,15,40,0.12)')) drawLandCode(g);
+  frameEnd(g, 'rgba(170,230,255,0.6)', 'rgba(2,20,45,0.4)');
+  return c;
+}
+function drawLandCode(g) {
   const ix = WATER.x, iy = WATER.y, iw = WATER.w, ih = WATER.h;
   const gr = g.createRadialGradient(W / 2, iy + ih * 0.4, 50, W / 2, iy + ih * 0.5, ih * 0.7);
   gr.addColorStop(0, '#1f78b8'); gr.addColorStop(0.6, '#145a92'); gr.addColorStop(1, '#0a3466');
@@ -364,8 +394,6 @@ function buildLandBG() {
   // 雲
   for (let i = 0; i < 16; i++) { const x = ix + r() * iw, y = iy + r() * ih, s = 90 + r() * 120; g.globalAlpha = 0.1 + r() * 0.08; g.drawImage(bokehSprite('rgba(255,255,255,A)'), x - s, y - s * 0.35, s * 2, s * 0.7); }
   g.globalAlpha = 1;
-  frameEnd(g, 'rgba(170,230,255,0.6)', 'rgba(2,20,45,0.4)');
-  return c;
 }
 
 // コースティクス（池・海）
@@ -537,7 +565,7 @@ function addShake(m) { G.shake = Math.max(G.shake, m); }
 
 // ---------------------------------------------------------------- 入力
 const input = { down: false, px: W / 2, py: 640, away: false };
-function btnRect(i) { return { x: 14 + i * 234, y: SHOP_Y + 6, w: 224, h: 172 }; }
+function btnRect(i) { return { x: 14 + i * 234, y: SHOP_Y + 8, w: 224, h: 180 }; }
 function shopHit(x, y) { for (let i = 0; i < 3; i++) { const b = btnRect(i); if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return i; } return -1; }
 const busy = () => G.clear || G.trans || G.ending;
 function pDown(x, y) {
@@ -1844,9 +1872,11 @@ function drawShop(c) {
     const b = btnRect(i), p = price(i), can = G.coins >= p, maxed = p === Infinity;
     const ps = 1 - press[i] * 0.5 + (can && !maxed ? 0.02 * Math.sin(G.realT * 6 + i) : 0);
     const dshk = deny[i] > 0 ? Math.sin(deny[i] * 60) * 6 : 0;
-    c.save(); c.translate(b.x + b.w / 2 + dshk, b.y + b.h / 2); c.scale(ps, ps);
-    const x = -b.w / 2, y = -b.h / 2;
-    drawShopPlate(c, x, y, b.w, b.h, can && !maxed, maxed ? 1 : clamp(G.coins / p, 0, 1));
+    // 板は押せる範囲より 10px 低く描き、下に厚み（影）を見せる
+    const bh = b.h - 10;
+    c.save(); c.translate(b.x + b.w / 2 + dshk, b.y + bh / 2); c.scale(ps, ps);
+    const x = -b.w / 2, y = -bh / 2;
+    drawShopPlate(c, x, y, b.w, bh, can && !maxed, maxed ? 1 : clamp(G.coins / p, 0, 1));
     const ix = 0, iy = y + 46, ink = can && !maxed ? '#7a2a00' : '#ffd23a';
     if (i === 0) {
       // 紙の厚さ：重ねた紙と錘
@@ -1883,7 +1913,7 @@ function drawShop(c) {
       text(c, 'おまけ -' + Math.round((1 - omake()) * 100) + '%', 0, 1, 16, '#ffffff', null, 0, 'center', '900');
       c.restore();
     }
-    if (boughtFx[i] > 0) { c.globalAlpha = boughtFx[i] / 0.6; c.fillStyle = '#ffffff'; rr(c, x, y, b.w, b.h, 26); c.fill(); c.globalAlpha = 1; }
+    if (boughtFx[i] > 0) { c.globalAlpha = boughtFx[i] / 0.6; c.fillStyle = '#ffffff'; rr(c, x, y, b.w, bh, 24); c.fill(); c.globalAlpha = 1; }
     c.restore();
   }
 }
