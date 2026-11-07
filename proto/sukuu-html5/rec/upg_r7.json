@@ -1,0 +1,101 @@
+{
+ "world0_thick0_size0": {
+  "events": [
+   "tear:heavy"
+  ],
+  "cap": 3,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world0_thick4_size0": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world0_thick4_size2": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world1_thick0_size0": {
+  "events": [],
+  "cap": 3,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world1_thick4_size0": {
+  "events": [],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world1_thick4_size2": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world2_thick0_size0": {
+  "events": [
+   "tear:heavy"
+  ],
+  "cap": 3,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world2_thick4_size0": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world2_thick4_size2": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world3_thick0_size0": {
+  "events": [
+   "tear:heavy"
+  ],
+  "cap": 3,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world3_thick4_size0": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ },
+ "world3_thick4_size2": {
+  "events": [
+   "scoop",
+   "boss_catch"
+  ],
+  "cap": 19.7,
+  "boss_w": 17,
+  "errors": 0
+ }
+}

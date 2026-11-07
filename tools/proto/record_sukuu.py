@@ -176,7 +176,7 @@ def cmd_manual(a):
             page.wait_for_timeout(200)
             st2 = page.evaluate("() => window.__state()")
             out[mode] = {"dips_detected": dips, "tries": 12, "coins_after_scoops": st["coins"], "earned": st["earned"],
-                         "scoops": st["scoops"], "dur_lv_before": st["lv"]["dur"], "dur_lv_after_tap": st2["lv"]["dur"],
+                         "scoops": st["scoops"], "dur_lv_before": st["lv"].get("dur", st["lv"].get("t")), "dur_lv_after_tap": st2["lv"].get("dur", st2["lv"].get("t")),
                          "console_errors": len(errors)}
             browser.close()
     print(json.dumps(out, ensure_ascii=False, indent=1))
