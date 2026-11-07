@@ -203,7 +203,7 @@ for (const [k, ext, world] of ART) {
 }
 // 獲物の絵（透過 png）。読めないときはコードの絵
 // 1024〜1536px の絵を毎コマ縮めて描くと重い（hand で実時間 180 秒がゲーム 146 秒に）。読んだときに一度だけ縮める
-const SPRITE_MAX = { kingyo_body: 192, sp_whale: 512, kin_body: 512 };
+const SPRITE_MAX = { kingyo_body: 192, sp_tai: 192, sp_kame: 256, sp_whale: 512, kin_body: 512 };
 function shrinkImage(im, maxSide) {
   const s = Math.min(1, maxSide / Math.max(im.width, im.height));
   if (s >= 1) return im;
@@ -211,7 +211,7 @@ function shrinkImage(im, maxSide) {
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
   return cv;
 }
-for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body']) {
+for (const k of ['isl_small', 'isl_small2', 'isl_small3', 'isl_volcano', 'isl_big', 'isl_continent', 'sp_galaxy', 'sp_nebula', 'sp_planet', 'sp_sun', 'sp_whale', 'kin_body', 'kingyo_body', 'sp_tai', 'sp_kame']) {
   const im = new Image();
   im.onload = () => { IMG[k] = shrinkImage(im, SPRITE_MAX[k] || 384); };
   im.src = 'assets/' + k + '.png';
@@ -1416,13 +1416,24 @@ function botUpdate(dt) {
 
 // ---------------------------------------------------------------- 描画：獲物
 function finTail(c, r, sw, sw2, tcol, tl) {
-  c.save(); c.translate(-0.42 * r, 0); c.rotate(sw * 0.38); c.fillStyle = tcol;
+  c.save(); c.translate(-0.42 * r, 0); c.rotate(sw * 0.38);
+  // 批評 r11 の確認：尾びれが「平らな板」に見えた。付け根は濃く先は透ける色と、すじ（鰭条）を入れる
+  const grad = c.createLinearGradient(0, 0, -0.98 * r * tl, 0);
+  grad.addColorStop(0, tcol); grad.addColorStop(1, 'rgba(255,240,225,0.3)');
+  c.fillStyle = grad;
   const bend = sw2 * 0.22 * r;
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = Math.max(1, r * 0.022);
   for (const s of [-1, 1]) {
+    const ex = -0.98 * r * tl, ey = s * 0.62 * r + bend, ix = -0.88 * r * tl, iy = bend * 0.6;
     c.beginPath(); c.moveTo(0, 0);
-    c.quadraticCurveTo(-0.35 * r, s * 0.6 * r, -0.98 * r * tl, s * 0.62 * r + bend);
-    c.quadraticCurveTo(-0.72 * r, s * 0.2 * r + bend * 0.5, -0.88 * r * tl, bend * 0.6);
+    c.quadraticCurveTo(-0.35 * r, s * 0.6 * r, ex, ey);
+    c.quadraticCurveTo(-0.72 * r, s * 0.2 * r + bend * 0.5, ix, iy);
     c.closePath(); c.fill();
+    if (r >= 14) {
+      c.beginPath();
+      for (let k = 1; k <= 4; k++) { const u = k / 5; c.moveTo(0, 0); c.lineTo(ix + (ex - ix) * u, iy + (ey - iy) * u); }
+      c.stroke();
+    }
   }
   c.restore();
 }
@@ -1529,6 +1540,8 @@ function drawIwashi(c, f, r, sw) {
   c.fillStyle = '#0a1220'; c.beginPath(); c.arc(0.55 * r, -0.05 * r, 0.05 * r, 0, TAU); c.fill();
 }
 function drawTai(c, f, r, sw, sw2) {
+  // 批評 r11 の確認：海の小さな魚と亀が「素朴なクリップアート」。絵に差し替え（読めないときはコードの絵）
+  if (IMG.sp_tai) { c.save(); c.rotate(sw * 0.06); c.drawImage(IMG.sp_tai, -r * 0.95, -r * 0.63, r * 1.9, r * 1.27); c.restore(); return; }
   c.save(); c.translate(-0.5 * r, 0); c.rotate(sw * 0.35); c.fillStyle = '#e8566a';
   for (const s of [-1, 1]) { c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-0.25 * r, s * 0.2 * r, -0.48 * r, s * 0.4 * r + sw2 * 0.06 * r); c.lineTo(-0.36 * r, 0); c.closePath(); c.fill(); }
   c.restore();
@@ -1542,6 +1555,7 @@ function drawTai(c, f, r, sw, sw2) {
   c.fillStyle = '#fff'; c.beginPath(); c.arc(0.43 * r, -0.09 * r, 0.02 * r, 0, TAU); c.fill();
 }
 function drawKame(c, f, r, sw) {
+  if (IMG.sp_kame && !f.K.gold) { c.save(); c.rotate(sw * 0.05); sprite(c, 'sp_kame', r * 0.95); c.restore(); return; }
   c.fillStyle = '#8fbf5a';
   for (const [x, y, s, big] of [[0.28, 0.36, 1, 1], [0.28, -0.36, -1, 1], [-0.32, 0.3, 1, 0], [-0.32, -0.3, -1, 0]]) {
     c.save(); c.translate(x * r, y * r); c.rotate(s * (big ? 0.9 + sw * 0.5 : 2.2 - sw * 0.3)); c.beginPath(); c.ellipse(0.12 * r, 0, (big ? 0.28 : 0.15) * r, 0.08 * r, 0, 0, TAU); c.fill(); c.restore();
