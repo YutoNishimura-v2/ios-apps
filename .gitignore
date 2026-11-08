@@ -5,3 +5,5 @@ apps/*/Payload/
 *.ipa
 _site/
 .DS_Store
+# 他社のゲーム動画のコマ（2026-11-08 に取り下げ。手元の写しは workspace/ios-apps-private-refs/）
+docs/concepts/refs-youtube-2026-11-07/
